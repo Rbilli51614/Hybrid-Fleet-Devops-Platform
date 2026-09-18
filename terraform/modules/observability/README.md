@@ -13,6 +13,10 @@ The brief's shorthand — "CloudWatch + Alarms → Alertmanager → PagerDuty/Op
 
 Both converge on the same destination; neither goes through the other. Worth knowing before assuming the diagram arrow is a literal single pipeline.
 
+## The `pagerduty_integration_key = null` default used to crash `plan`/`apply` outright
+
+Not a hypothetical — this is exactly what happened applying this stack for real with no key configured (this module's normal, out-of-the-box state, and its documented default). `locals.alertmanager_config_with_pagerduty` interpolated `var.pagerduty_integration_key` directly into a heredoc; Terraform evaluates *every* local in a `locals` block regardless of whether the ternary that picks between `alertmanager_config_with_pagerduty` and `alertmanager_config_default` (below) actually selects it, so `"${null}"` — invalid HCL, "Cannot include a null value in a string template" — blew up the whole plan even though that branch was never going to be used. Fixed by routing the interpolation through `coalesce(var.pagerduty_integration_key, "")` first, so the discarded branch is always evaluable even when it's empty. `terraform validate` never caught this (it doesn't fully evaluate variable defaults into locals the way a real plan does); only an actual plan against this module's own documented default surfaced it.
+
 ## Grafana authentication
 
 `aws_grafana_workspace` here uses `AWS_SSO` (IAM Identity Center) authentication — the AWS-recommended default, and the only provider that doesn't need a separate SAML IdP. **IAM Identity Center must already be enabled in the account** (an account-level, not Terraform-managed, prerequisite) before this workspace is reachable. Pass `grafana_admin_sso_user_ids` (Identity Center user IDs, not IAM ARNs — find them via `aws identitystore list-users`) to actually grant someone in; an AWS_SSO-authenticated workspace with zero role associations has no way in for anyone.
@@ -21,7 +25,7 @@ Both converge on the same destination; neither goes through the other. Worth kno
 
 ```hcl
 module "observability" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.1"
 
   name = "hybrid-fleet"
 

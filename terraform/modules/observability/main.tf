@@ -39,13 +39,24 @@ resource "aws_prometheus_rule_group_namespace" "this" {
 }
 
 locals {
+  # Both branches below are evaluated unconditionally — Terraform doesn't
+  # lazily skip an unused local just because the ternary that picks
+  # between them (below) doesn't select it. Interpolating
+  # var.pagerduty_integration_key directly here crashes plan/apply outright
+  # ("Cannot include a null value in a string template") whenever it's
+  # null — which is the default, and this module's normal unconfigured
+  # state. coalesce(..., "") keeps this branch evaluable even when it's
+  # the one that ends up discarded; it's never actually used unless the
+  # key is set, at which point it's never empty either.
+  pagerduty_integration_key_safe = coalesce(var.pagerduty_integration_key, "")
+
   alertmanager_config_with_pagerduty = <<-EOT
     route:
       receiver: pagerduty
     receivers:
       - name: pagerduty
         pagerduty_configs:
-          - service_key: ${var.pagerduty_integration_key}
+          - service_key: ${local.pagerduty_integration_key_safe}
   EOT
 
   # No PagerDuty integration key configured — alerts are evaluated and
