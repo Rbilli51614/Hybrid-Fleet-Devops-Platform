@@ -1,0 +1,36 @@
+# Example values for the `gha-runner-scale-set` Helm chart — one release per
+# repo (or org) that needs self-hosted runners. Copy this file per team,
+# rename the release, and fill in githubConfigUrl.
+#
+# Ephemeral by design: gha-runner-scale-set launches exactly one runner pod
+# per job and tears it down afterwards — no persistent runner pool to patch,
+# no lateral-movement surface left standing between jobs. See
+# docs/interview-talking-points.md.
+
+githubConfigUrl: "https://github.com/<org>/<repo>"
+githubConfigSecret: arc-github-app # created per terraform/modules/arc/README.md
+
+minRunners: 0
+maxRunners: 10
+
+template:
+  spec:
+    # Pins runner pods to the Karpenter CI-only NodePool (Spot-first,
+    # tainted so app workloads never land here) — see
+    # kubernetes/eks/karpenter/nodepool-ci-runners.yaml.
+    nodeSelector:
+      workload: ci-runner
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: ci-runner
+        effect: NoSchedule
+
+    # Only set this if terraform/modules/arc's runner_irsa_policy_json was
+    # configured for this team, and must match runner_service_account_name.
+    # serviceAccountName: arc-runner
+
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]

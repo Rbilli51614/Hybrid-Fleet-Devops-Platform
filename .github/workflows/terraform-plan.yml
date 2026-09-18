@@ -53,6 +53,7 @@ jobs:
           - terraform/live/dev/cloud-vpc
           - terraform/live/dev/eks
           - terraform/live/dev/karpenter
+          - terraform/live/dev/arc
     steps:
       - uses: actions/checkout@v4
 

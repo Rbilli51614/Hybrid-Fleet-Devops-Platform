@@ -1,0 +1,48 @@
+# CI-only NodePool: Spot-first, tainted so app workloads never land here and
+# ARC runner pods never contend with app deploys for capacity — see
+# docs/pitfalls.md ("CI workload volume grows 5-10x").
+#
+# Reuses the same EC2NodeClass as the app-workload default pool (same
+# account, same subnets/SG discovery tags) — only the NodePool differs.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ci-runners
+spec:
+  template:
+    metadata:
+      labels:
+        workload: ci-runner
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      taints:
+        - key: workload
+          value: ci-runner
+          effect: NoSchedule
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["4"]
+      expireAfter: 720h
+  # No on-demand floor yet (see docs/pitfalls.md: "Spot interruption rate
+  # spikes during peak CI hours"). Add one — e.g. a second, on-demand-only
+  # NodePool with higher weight and a capacity limit — once real interruption
+  # data from this pool justifies it.
+  limits:
+    cpu: 200
+    memory: 200Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m

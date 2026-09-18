@@ -13,7 +13,7 @@ terraform/
   modules/          # Shared, versioned Terraform modules (the "private registry")
   live/              # Terragrunt live environments that consume the modules
     global/          # Account-level bootstrap (Terraform state backend)
-    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, on-prem VPC, VM-tier K8s, Nexus, VPN, observability)
+    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, on-prem VPC, VM-tier K8s, Nexus, VPN, observability)
 ansible/             # Config management for the VM tier: kubeadm/k3s bootstrap, Nexus setup
 kubernetes/
   base/              # Manifests applied identically to BOTH clusters (OPA/Gatekeeper, OTel Collector)
@@ -30,7 +30,7 @@ This is being built in phases, each independently demonstrable:
 
 - [x] **Phase 0 — Repo scaffolding & Terraform foundation.** Directory structure, remote state backend (S3 + DynamoDB), shared VPC module, Terragrunt root config, CI skeleton.
 - [x] **Phase 1 — Cloud-native tier.** EKS cluster + core system node group + IRSA (generic module), Karpenter controller (IAM, Spot-interruption SQS/EventBridge, Helm release) and its default NodePool/EC2NodeClass.
-- [ ] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, registered against a GitHub App, ephemeral autoscaled runner pods, plus a Spot-first CI-only Karpenter NodePool.
+- [x] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, GitHub App credentials in Secrets Manager, optional runner-pod IRSA, ephemeral autoscaled runner pods on a Spot-first CI-only Karpenter NodePool.
 - [ ] **Phase 3 — VM tier.** Persistent EC2 ASG, `kubeadm`/`k3s` bootstrap via Ansible, SSM-only access (no SSH).
 - [ ] **Phase 4 — Hybrid networking.** "On-prem" VPC + Site-to-Site VPN linking the two tiers, Route 53 private hosted zone, ALB Ingress Controller.
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
@@ -53,8 +53,11 @@ terraform init && terraform apply
 cd terraform/live/dev/cloud-vpc  && terragrunt init && terragrunt apply
 cd ../eks                        && terragrunt init && terragrunt apply
 cd ../karpenter                  && terragrunt init && terragrunt apply
+cd ../arc                        && terragrunt init && terragrunt apply
 
-# 3. Apply Karpenter's NodePool/EC2NodeClass (kubectl-managed, not Terraform)
+# 3. Apply the kubectl-managed cluster-native resources (Karpenter
+#    NodePools/EC2NodeClass, and — after registering runners, see
+#    terraform/modules/arc/README.md — the ARC runner scale set)
 aws eks update-kubeconfig --name hybrid-fleet-eks --region us-east-1
 kubectl apply -f kubernetes/eks/karpenter/
 ```
