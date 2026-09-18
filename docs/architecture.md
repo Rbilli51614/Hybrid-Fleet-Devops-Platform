@@ -87,6 +87,8 @@ This isn't just documented convention — `terraform/live/dev/cloud-vpc` and `te
 
 Tags give every consumer the same version-pinning and breaking-change discipline a hosted private registry would, without a paid dependency — see [`decision-stack.md`](decision-stack.md) for the tradeoff discussion, and [`pitfalls.md`](pitfalls.md) for when a git-tag convention stops being enough (many teams, needs enforced deprecation policy) and a real private registry becomes the right move.
 
+A consequence of that sibling-reference mechanism only showed up on a real apply, not the earlier fetch round-trip: a relative `source = "../iam-irsa"` resolves against whatever commit *the calling module's own tag* points to, not `iam-irsa`'s latest tag — so a fix to a shared sibling module doesn't reach a caller still pinned to an older tag, even when that caller's own files never changed. `alb-ingress-controller` hit exactly this: it needed a `v1.0.1` retag with zero code changes of its own, purely to re-pin against a commit containing an `iam-irsa` fix. See [`terraform/modules/iam-irsa`](../terraform/modules/iam-irsa/)'s README for the full account.
+
 ### The `_envcommon` pattern
 
 Five stacks — `karpenter`, `arc`, `alb-ingress-controller`, `opa-gatekeeper`, `otel-collector` — each need to be their own Terragrunt unit purely so their `helm` provider can authenticate against an EKS cluster that already exists (see below), which means each one used to carry an identical, copy-pasted `dependency "eks"` block and `generate "helm_provider"` block. That duplication now lives once, in [`terraform/_envcommon/eks-controller.hcl`](../terraform/_envcommon/eks-controller.hcl), included by each of the five stacks alongside `root.hcl`.

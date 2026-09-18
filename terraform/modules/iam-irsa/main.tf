@@ -28,11 +28,17 @@ resource "aws_iam_role" "this" {
   tags               = var.tags
 }
 
+# count, not for_each: toset(var.policy_arns) needs every element's VALUE
+# known at plan time to compute set membership, and it breaks the same way
+# attach_inline_policy was built to avoid (see variables.tf) the moment a
+# caller passes a same-apply resource's ARN — alb-ingress-controller does,
+# with policy_arns = [aws_iam_policy.controller.arn]. count only needs the
+# list's LENGTH known, not its elements' values, so it tolerates this fine.
 resource "aws_iam_role_policy_attachment" "managed" {
-  for_each = toset(var.policy_arns)
+  count = length(var.policy_arns)
 
   role       = aws_iam_role.this.name
-  policy_arn = each.value
+  policy_arn = var.policy_arns[count.index]
 }
 
 resource "aws_iam_role_policy" "inline" {

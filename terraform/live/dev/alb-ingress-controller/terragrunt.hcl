@@ -16,7 +16,7 @@ dependency "cloud_vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/alb-ingress-controller?ref=modules/alb-ingress-controller/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/alb-ingress-controller?ref=modules/alb-ingress-controller/v1.0.1"
 }
 
 inputs = {
