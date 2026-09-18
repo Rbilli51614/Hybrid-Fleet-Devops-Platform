@@ -8,3 +8,11 @@ collections:
     version: ">=1.5.0"
   - name: kubernetes.core
     version: ">=3.0.0"
+  # community.general.modprobe (k8s-common) and community.general.filesystem
+  # (nexus) — missed here originally, masked on a dev machine that already
+  # had this collection installed from unrelated work; only surfaced
+  # running against a genuinely clean environment (ansible-galaxy install
+  # -r requirements.yml with nothing pre-installed), which is exactly the
+  # scenario this file exists to make reproducible.
+  - name: community.general
+    version: ">=8.0.0"

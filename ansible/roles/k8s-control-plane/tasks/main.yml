@@ -24,6 +24,29 @@
     remote_src: true
     mode: "0600"
 
+# Both kubernetes.core.k8s (below) and community.aws.ssm_parameter
+# (further down) run their Python on the target, not the controller, and
+# each needs its own PyPI library there — neither was installed until real
+# runs failed one after the other: "Failed to import the required Python
+# library (kubernetes)", then, once that was fixed, the identical failure
+# for "(botocore and boto3)" on the very next task. Neither
+# terraform validate nor ansible-playbook --syntax-check touches a
+# module's runtime Python dependencies; this only ever surfaces by
+# actually running the module.
+- name: Install prerequisites for the kubernetes.core.k8s and community.aws.ssm_parameter modules
+  ansible.builtin.apt:
+    name: python3-pip
+    state: present
+
+- name: Install the Python libraries those modules need on this host
+  ansible.builtin.pip:
+    name:
+      - kubernetes
+      - boto3
+      - botocore
+    state: present
+    break_system_packages: true
+
 - name: Install the Calico CNI
   kubernetes.core.k8s:
     state: present

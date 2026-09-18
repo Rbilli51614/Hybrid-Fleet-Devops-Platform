@@ -15,6 +15,16 @@
 aws_region: "us-east-1"
 cluster_name: "hybrid-fleet-vm-k8s"
 
+# The SSM file-transfer staging bucket the aws_ssm connection plugin needs
+# (see terraform/modules/vm-k8s-asg's ssm_transfer_bucket_name output,
+# exported as ANSIBLE_SSM_BUCKET — ansible/README.md). This has to live
+# here, not in inventories/dev/aws_ec2.yml's own `compose` block: that
+# plugin's compose evaluation context doesn't reliably run the `env`
+# lookup (it silently resolves to nothing — confirmed against a real
+# dynamic-inventory run, not assumed), while group_vars templating, which
+# runs through the normal Jinja pipeline, does.
+ansible_aws_ssm_bucket_name: "{{ lookup('ansible.builtin.env', 'ANSIBLE_SSM_BUCKET') }}"
+
 # Matches terraform/modules/vm-k8s-asg's default (join_token_ssm_path unset
 # there resolves to "/<cluster_name>/join-command"). If that variable is
 # ever overridden in terraform/live/dev/vm-k8s, override it here too — or

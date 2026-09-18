@@ -8,7 +8,7 @@ Terraform's job stops at "the box exists, is reachable via SSM, and has an IAM r
 
 ```
 ansible.cfg                    # points at inventories/dev by default, enables the aws_ec2 inventory plugin
-requirements.yml                # collections: amazon.aws, community.aws, ansible.posix, kubernetes.core
+requirements.yml                # collections: amazon.aws, community.aws, ansible.posix, kubernetes.core, community.general
 inventories/dev/
   aws_ec2.yml                   # dynamic inventory — discovers nodes by tag, groups by Role, connects via SSM
   group_vars/all.yml            # wires Terraform outputs (join_token_ssm_path, etc.) into the playbook

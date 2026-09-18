@@ -6,9 +6,13 @@
 #
 # Connection is entirely over AWS Systems Manager Session Manager — no SSH
 # key, no open port 22, no bastion. Requires an S3 bucket for the SSM
-# connection plugin's file-transfer staging (ansible_aws_ssm_bucket_name
-# below); terraform/modules/vm-k8s-asg provisions it — export its
-# ssm_transfer_bucket_name output as ANSIBLE_SSM_BUCKET, see ansible/README.md.
+# connection plugin's file-transfer staging — ansible_aws_ssm_bucket_name
+# is set in group_vars/all.yml, not here (see that file for why: this
+# plugin's own `compose` evaluation context doesn't reliably run the `env`
+# lookup — it silently produces nothing, confirmed against a real
+# dynamic-inventory run, not assumed from behavior elsewhere). terraform/modules/vm-k8s-asg
+# provisions the bucket — export its ssm_transfer_bucket_name output as
+# ANSIBLE_SSM_BUCKET, see ansible/README.md.
 plugin: amazon.aws.aws_ec2
 
 regions:
@@ -29,4 +33,3 @@ compose:
   ansible_host: instance_id
   ansible_connection: "'community.aws.aws_ssm'"
   ansible_aws_ssm_region: "'us-east-1'"
-  ansible_aws_ssm_bucket_name: "lookup('ansible.builtin.env', 'ANSIBLE_SSM_BUCKET')"

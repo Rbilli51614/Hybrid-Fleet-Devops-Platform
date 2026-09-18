@@ -170,6 +170,22 @@ data "aws_iam_policy_document" "join_token_parameter" {
     actions   = lookup(local.ssm_parameter_actions_by_role, each.value.role, ["ssm:GetParameter"])
     resources = [local.ssm_parameter_arn]
   }
+
+  # community.aws.ssm_parameter (ansible/roles/k8s-control-plane) calls
+  # DescribeParameters internally before PutParameter — a real apply
+  # failed with AccessDeniedException until this was added. Its own
+  # separate statement, not folded into the one above: DescribeParameters
+  # doesn't support resource-level permissions at all (confirmed against
+  # AWS's own IAM action reference, not assumed) — Resource must be "*",
+  # so it can't share a statement scoped to one specific parameter ARN.
+  dynamic "statement" {
+    for_each = each.value.role == "control-plane" ? [1] : []
+
+    content {
+      actions   = ["ssm:DescribeParameters"]
+      resources = ["*"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "join_token_parameter" {
