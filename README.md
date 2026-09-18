@@ -13,11 +13,11 @@ terraform/
   modules/          # Shared, versioned Terraform modules (the "private registry")
   live/              # Terragrunt live environments that consume the modules
     global/          # Account-level bootstrap (Terraform state backend)
-    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, on-prem VPC, VM-tier K8s, Nexus, VPN, observability)
+    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, ALB Ingress, on-prem VPC, VM-tier K8s, VPN, DNS, Nexus, observability)
 ansible/             # Config management for the VM tier: kubeadm bootstrap (over SSM, no SSH), Nexus setup
 kubernetes/
   base/              # Manifests applied identically to BOTH clusters (OPA/Gatekeeper, OTel Collector)
-  eks/               # EKS-only workloads (ARC runner controller, Karpenter NodePools)
+  eks/               # EKS-only workloads (ARC runner controller, Karpenter NodePools, example ALB Ingress)
   vm-tier/           # VM-cluster-only manifests
 policy/              # Gatekeeper constraint templates and constraints
 .github/workflows/   # CI/CD: Terraform plan/apply, reusable workflow components
@@ -32,7 +32,7 @@ This is being built in phases, each independently demonstrable:
 - [x] **Phase 1 — Cloud-native tier.** EKS cluster + core system node group + IRSA (generic module), Karpenter controller (IAM, Spot-interruption SQS/EventBridge, Helm release) and its default NodePool/EC2NodeClass.
 - [x] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, GitHub App credentials in Secrets Manager, optional runner-pod IRSA, ephemeral autoscaled runner pods on a Spot-first CI-only Karpenter NodePool.
 - [x] **Phase 3 — VM tier.** "On-prem" VPC, persistent EC2 ASGs (control-plane + worker node groups), SSM-only IAM (no SSH), kubeadm bootstrap + Calico CNI via Ansible over the SSM connection plugin.
-- [ ] **Phase 4 — Hybrid networking.** Site-to-Site VPN linking the cloud and on-prem VPCs, Route 53 private hosted zone, ALB Ingress Controller.
+- [x] **Phase 4 — Hybrid networking.** Real Site-to-Site VPN (VGW + self-managed strongSwan customer gateway, configured via Ansible over SSM) linking the cloud and on-prem VPCs, a Route 53 private hosted zone associated with both, and the AWS Load Balancer Controller for ALB Ingress on EKS.
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
 - [ ] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), EBS storage, S3 lifecycle-managed backup/restore runbook.
 - [ ] **Phase 7 — Policy parity.** OPA/Gatekeeper deployed identically on both clusters.
@@ -65,6 +65,12 @@ kubectl apply -f kubernetes/eks/karpenter/
 #    see ansible/README.md for the full Ansible wiring steps
 cd ../../onprem-vpc && terragrunt init && terragrunt apply
 cd ../vm-k8s         && terragrunt init && terragrunt apply
+
+# 5. Hybrid networking: DNS, ALB Ingress, and the Site-to-Site VPN linking
+#    the two VPCs (then configure strongSwan — see ansible/README.md)
+cd ../dns                     && terragrunt init && terragrunt apply
+cd ../alb-ingress-controller  && terragrunt init && terragrunt apply
+cd ../vpn                     && terragrunt init && terragrunt apply
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full system diagram and [`docs/runbooks/`](docs/runbooks/) for operational procedures.

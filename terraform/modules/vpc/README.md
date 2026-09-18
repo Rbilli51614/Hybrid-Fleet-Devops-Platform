@@ -38,3 +38,5 @@ module "cloud_vpc" {
 | `public_subnet_ids` | Public subnet IDs |
 | `private_subnet_ids` | Private subnet IDs |
 | `nat_gateway_ids` | NAT Gateway ID(s) |
+| `private_route_table_ids` | Private route table ID(s) — consumed by the `vpn` module for route propagation |
+| `public_route_table_id` | The (single, shared) public route table ID |

@@ -1,0 +1,35 @@
+{{ ansible_managed | comment }}
+# Parameters below (ike/esp proposals, lifetimes) are AWS's documented
+# defaults for a generic/strongSwan customer gateway on a static
+# connection. If a tunnel won't come up, cross-check against this specific
+# connection's real customer_gateway_configuration XML — see
+# ansible/roles/vpn-gateway/defaults/main.yml.
+
+config setup
+    charondebug="ike 1, knl 1, cfg 0"
+    uniqueids=no
+
+conn %default
+    authby=secret
+    auto=start
+    keyexchange=ikev1
+    type=tunnel
+    keyingtries=%forever
+    ike={{ ike_proposal }}!
+    esp={{ esp_proposal }}!
+    ikelifetime={{ ike_lifetime }}
+    lifetime={{ esp_lifetime }}
+    dpddelay={{ dpd_delay }}
+    dpdtimeout={{ dpd_timeout }}
+    dpdaction=restart
+    left=%defaultroute
+    leftsubnet={{ onprem_cidr }}
+    rightsubnet={{ cloud_cidr }}
+
+# Two tunnels for redundancy — AWS terminates both ends of each
+# independently; either one carries traffic if the other is down.
+conn tunnel1
+    right={{ tunnel1_outside_address }}
+
+conn tunnel2
+    right={{ tunnel2_outside_address }}

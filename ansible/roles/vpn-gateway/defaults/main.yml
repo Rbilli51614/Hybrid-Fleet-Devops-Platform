@@ -1,0 +1,18 @@
+---
+# Must match terraform/live/dev/vpn's tunnel_parameter_path input — no safe
+# default, deliberately left unset so a run without -e fails loudly instead
+# of reading from the wrong path.
+tunnel_parameter_path: "/hybrid-fleet/vpn"
+aws_region: "us-east-1"
+
+# AWS's documented defaults for a "generic"/strongSwan customer gateway on
+# a static (non-BGP) connection. Cross-check against the specific
+# connection's real customer_gateway_configuration XML (terraform/modules/
+# vpn's output of the same name) if a tunnel won't come up — AWS revises
+# these periodically and this role doesn't parse that XML automatically.
+ike_proposal: "aes128-sha1-modp1024"
+esp_proposal: "aes128-sha1-modp1024"
+ike_lifetime: "8h"
+esp_lifetime: "1h"
+dpd_delay: "10s"
+dpd_timeout: "30s"

@@ -1,0 +1,15 @@
+---
+# Configures strongSwan on the on-prem gateway instance terraform/live/dev/vpn
+# provisions, using the tunnel parameters that stack wrote to SSM Parameter
+# Store. Run after that stack has applied.
+#
+#   ansible-playbook playbooks/configure-vpn-gateway.yml
+#
+# Idempotent: safe to re-run (e.g. after Terraform replaces the instance,
+# or to pick up an updated tunnel_parameter_path).
+
+- name: Configure the on-prem VPN gateway
+  hosts: vpn_gateway
+  become: true
+  roles:
+    - vpn-gateway

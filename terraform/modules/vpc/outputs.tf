@@ -22,3 +22,13 @@ output "nat_gateway_ids" {
   description = "IDs of the NAT Gateway(s)."
   value       = aws_nat_gateway.this[*].id
 }
+
+output "private_route_table_ids" {
+  description = "IDs of the private route table(s) — one if single_nat_gateway, one per AZ otherwise. Used by the vpn module for route propagation."
+  value       = aws_route_table.private[*].id
+}
+
+output "public_route_table_id" {
+  description = "ID of the (single, shared) public route table."
+  value       = aws_route_table.public.id
+}

@@ -1,0 +1,26 @@
+# Example only — not applied by default. Shows the annotations that route
+# an Ingress through the ALB Ingress Controller (terraform/modules/
+# alb-ingress-controller) with path-based routing to multiple services
+# behind one ALB, per docs/decision-stack.md's Traffic layer rationale.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-app
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal # internet-facing only if this workload should be public
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  rules:
+    - host: example-app.hybrid-fleet.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: example-app
+                port:
+                  number: 80

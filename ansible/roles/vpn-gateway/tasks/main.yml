@@ -1,0 +1,61 @@
+---
+# Configures strongSwan to bring up both tunnels of the Site-to-Site VPN
+# terraform/modules/vpn negotiated. All parameters below were written by
+# that module to SSM Parameter Store; this role only reads them — runs
+# with this instance's own IAM role (via IMDS), which is scoped read-only
+# to tunnel_parameter_path.
+
+- name: Install strongSwan
+  ansible.builtin.apt:
+    name: strongswan
+    state: present
+    update_cache: true
+
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-vpn-forwarding.conf
+    reload: true
+
+- name: Fetch the negotiated tunnel configuration from SSM Parameter Store
+  ansible.builtin.set_fact:
+    onprem_cidr: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/onprem-cidr', region=aws_region) }}"
+    cloud_cidr: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/cloud-cidr', region=aws_region) }}"
+    tunnel1_outside_address: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/tunnel1/outside-address', region=aws_region) }}"
+    tunnel1_preshared_key: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/tunnel1/preshared-key', region=aws_region, decrypt=true) }}"
+    tunnel2_outside_address: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/tunnel2/outside-address', region=aws_region) }}"
+    tunnel2_preshared_key: "{{ lookup('amazon.aws.ssm_parameter', tunnel_parameter_path + '/tunnel2/preshared-key', region=aws_region, decrypt=true) }}"
+  no_log: true # the two preshared keys pass through here
+
+- name: Render ipsec.conf
+  ansible.builtin.template:
+    src: ipsec.conf.j2
+    dest: /etc/ipsec.conf
+    mode: "0644"
+  notify: Restart strongswan
+
+- name: Render ipsec.secrets
+  ansible.builtin.template:
+    src: ipsec.secrets.j2
+    dest: /etc/ipsec.secrets
+    mode: "0600"
+  notify: Restart strongswan
+  no_log: true # contains the preshared keys
+
+- name: Ensure strongSwan is enabled and running
+  ansible.builtin.systemd:
+    name: strongswan-starter
+    enabled: true
+    state: started
+
+- name: Flush handlers so the rendered config takes effect now
+  ansible.builtin.meta: flush_handlers
+
+- name: Bring up both tunnels
+  ansible.builtin.command: "ipsec up {{ item }}"
+  loop:
+    - tunnel1
+    - tunnel2
+  changed_when: true
+  failed_when: false # a tunnel that's already up returns non-zero; not worth failing the play over

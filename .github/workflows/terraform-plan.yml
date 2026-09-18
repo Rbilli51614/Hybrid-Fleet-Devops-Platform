@@ -54,8 +54,11 @@ jobs:
           - terraform/live/dev/eks
           - terraform/live/dev/karpenter
           - terraform/live/dev/arc
+          - terraform/live/dev/alb-ingress-controller
           - terraform/live/dev/onprem-vpc
           - terraform/live/dev/vm-k8s
+          - terraform/live/dev/dns
+          - terraform/live/dev/vpn
     steps:
       - uses: actions/checkout@v4
 
