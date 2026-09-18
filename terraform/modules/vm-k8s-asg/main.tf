@@ -17,8 +17,13 @@ data "aws_partition" "current" {}
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "nodes" {
-  name        = "${var.name}-nodes"
-  description = "Self-managed Kubernetes node traffic (control plane <-> workers). No ingress from outside the group; no SSH."
+  name = "${var.name}-nodes"
+  # AWS security group descriptions accept only a-zA-Z0-9. _-:/()#,@[]+=&;{}!$*
+  # (no "<" or ">") — a real apply rejected "control plane <-> workers"
+  # outright with "Invalid security group description", not something
+  # terraform validate checks since it's an AWS-side charset restriction,
+  # not an HCL type constraint.
+  description = "Self-managed Kubernetes node traffic (control plane to workers). No ingress from outside the group; no SSH."
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, {
@@ -35,9 +40,11 @@ resource "aws_vpc_security_group_ingress_rule" "self_all" {
 
 resource "aws_vpc_security_group_egress_rule" "all" {
   security_group_id = aws_security_group.nodes.id
-  description       = "Outbound for package/container image pulls via the on-prem VPC's NAT gateway, and SSM/API calls."
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
+  # Same AWS description-charset restriction as aws_security_group.nodes
+  # above ("'" isn't in the allowed set either) — caught in the same pass.
+  description = "Outbound for package/container image pulls via the on-prem VPC NAT gateway, and SSM/API calls."
+  cidr_ipv4   = "0.0.0.0/0"
+  ip_protocol = "-1"
 }
 
 # ---------------------------------------------------------------------------

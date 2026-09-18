@@ -4,11 +4,15 @@ Persistent EC2 Auto Scaling Groups standing in for on-prem VM-based Kubernetes (
 
 Versioned via git tags (`modules/vm-k8s-asg/vX.Y.Z`) — see [module registry convention](../../../docs/architecture.md#module-registry-convention).
 
+## AWS security group descriptions reject characters this repo's prose uses constantly
+
+A real apply failed outright — `InvalidParameterValue: Invalid security group description` — on a description reading "...control plane <-> workers..."; a second one, on the very next resource, for an apostrophe in "...VPC's NAT gateway...". AWS security group (and security group rule) descriptions only accept `a-zA-Z0-9. _-:/()#,@[]+=&;{}!$*` — no `<`, `>`, or `'`, among others. This is an AWS-side charset restriction, not an HCL type constraint, so `terraform validate` never flags it; only a real `CreateSecurityGroup`/`AuthorizeSecurityGroupIngress` call does. Worth a second look at any resource description written in this repo's usual prose style before assuming it'll apply cleanly.
+
 ## Example
 
 ```hcl
 module "vm_k8s" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.1"
 
   name         = "hybrid-fleet-vm-k8s"
   cluster_name = "hybrid-fleet-vm-k8s"
