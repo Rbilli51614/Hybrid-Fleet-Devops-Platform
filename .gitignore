@@ -34,6 +34,9 @@ inventories/*/group_vars/*secret*
 .vscode/
 *.swp
 
+# Claude Code local settings (personal permission rules, not shared)
+.claude/settings.local.json
+
 # Kubeconfig
 kubeconfig*
 *.kubeconfig

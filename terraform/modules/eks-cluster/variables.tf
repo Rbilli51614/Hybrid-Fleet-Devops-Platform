@@ -4,9 +4,9 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes minor version for the control plane (e.g. \"1.30\")."
+  description = "Kubernetes minor version for the control plane (e.g. \"1.31\"). AWS only keeps a rolling window of versions creatable/upgradable via the API (roughly the newest ~6 at any given time) — a version pinned here eventually ages out and both CreateNodegroup and new EKS addon versions start rejecting it (\"Requested AMI for this version ... is not supported\"), independent of anything in this module. There's no way to pin this permanently; revisit it periodically."
   type        = string
-  default     = "1.30"
+  default     = "1.31"
 }
 
 variable "vpc_id" {
@@ -47,6 +47,12 @@ variable "core_node_instance_types" {
   description = "Instance types for the core system node group, which hosts kube-system components (CoreDNS, EBS CSI, Karpenter controller) that must exist before Karpenter can provision any other capacity."
   type        = list(string)
   default     = ["t3.medium"]
+}
+
+variable "core_node_ami_type" {
+  description = "EKS-optimized AMI type for the core system node group. Set explicitly rather than left to the API default (AL2_x86_64) — AWS stopped publishing new EKS-optimized Amazon Linux 2 AMIs after 2025-11-26, and CreateNodegroup now rejects that default for current cluster versions with \"Requested AMI for this version ... is not supported\". AL2023 is the current AWS-recommended family."
+  type        = string
+  default     = "AL2023_x86_64_STANDARD"
 }
 
 variable "core_node_desired_size" {

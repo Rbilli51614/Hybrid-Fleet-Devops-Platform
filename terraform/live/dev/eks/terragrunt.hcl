@@ -15,12 +15,12 @@ dependency "cloud_vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.1"
 }
 
 inputs = {
   cluster_name       = "hybrid-fleet-eks"
-  kubernetes_version = "1.30"
+  kubernetes_version = "1.31"
 
   vpc_id     = dependency.cloud_vpc.outputs.vpc_id
   subnet_ids = dependency.cloud_vpc.outputs.private_subnet_ids

@@ -8,10 +8,10 @@ Versioned via git tags (`modules/eks-cluster/vX.Y.Z`) — see [module registry c
 
 ```hcl
 module "eks" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.1"
 
   cluster_name       = "hybrid-fleet-eks"
-  kubernetes_version = "1.30"
+  kubernetes_version = "1.31"
   vpc_id             = module.cloud_vpc.vpc_id
   subnet_ids         = module.cloud_vpc.private_subnet_ids
 
@@ -22,7 +22,7 @@ module "eks" {
 | Name | Description | Type | Default |
 |---|---|---|---|
 | `cluster_name` | Name of the EKS cluster | `string` | — |
-| `kubernetes_version` | Control plane Kubernetes minor version | `string` | `"1.30"` |
+| `kubernetes_version` | Control plane Kubernetes minor version. AWS only keeps a rolling ~6-version window creatable/upgradable via the API — a pinned version eventually ages out (`CreateNodegroup` starts rejecting it outright), independent of this module; revisit periodically | `string` | `"1.31"` |
 | `vpc_id` | VPC for the cluster and core node group | `string` | — |
 | `subnet_ids` | Subnets for control plane ENIs | `list(string)` | — |
 | `core_node_subnet_ids` | Subnets for the core node group (defaults to `subnet_ids`) | `list(string)` | `[]` |
@@ -30,6 +30,7 @@ module "eks" {
 | `endpoint_public_access_cidrs` | CIDRs allowed at the public endpoint | `list(string)` | `["0.0.0.0/0"]` |
 | `admin_principal_arns` | IAM principals granted cluster-admin via access entries | `list(string)` | `[]` |
 | `core_node_instance_types` | Instance types for the core node group | `list(string)` | `["t3.medium"]` |
+| `core_node_ami_type` | EKS-optimized AMI family for the core node group | `string` | `"AL2023_x86_64_STANDARD"` |
 | `core_node_desired_size` / `min_size` / `max_size` | Core node group sizing | `number` | `2` / `2` / `3` |
 | `cluster_addons` | EKS-managed addons to install | `map(object({version=optional(string)}))` | vpc-cni, coredns, kube-proxy, aws-ebs-csi-driver |
 | `tags` | Extra tags applied to all resources | `map(string)` | `{}` |

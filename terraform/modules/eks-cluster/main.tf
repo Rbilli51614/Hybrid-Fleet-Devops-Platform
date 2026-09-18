@@ -151,6 +151,7 @@ resource "aws_eks_node_group" "core" {
   subnet_ids      = local.core_node_subnet_ids
 
   instance_types = var.core_node_instance_types
+  ami_type       = var.core_node_ami_type
   capacity_type  = "ON_DEMAND"
 
   scaling_config {
