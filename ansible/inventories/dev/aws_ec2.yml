@@ -1,0 +1,32 @@
+# Dynamic inventory: no hardcoded IPs (nodes have none — private-subnet only,
+# SSM-reachable by instance ID). Discovers VM-tier nodes by the tags
+# terraform/modules/vm-k8s-asg sets, and groups them by the `Role` tag
+# (control-plane / worker) so bootstrap-k8s.yml can target each with the
+# matching role.
+#
+# Connection is entirely over AWS Systems Manager Session Manager — no SSH
+# key, no open port 22, no bastion. Requires an S3 bucket for the SSM
+# connection plugin's file-transfer staging (ansible_aws_ssm_bucket_name
+# below); terraform/modules/vm-k8s-asg provisions it — export its
+# ssm_transfer_bucket_name output as ANSIBLE_SSM_BUCKET, see ansible/README.md.
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - us-east-1
+
+filters:
+  tag:Tier: onprem
+  instance-state-name: running
+
+keyed_groups:
+  - key: tags.Role
+    separator: ""
+
+hostnames:
+  - instance-id
+
+compose:
+  ansible_host: instance_id
+  ansible_connection: "'community.aws.aws_ssm'"
+  ansible_aws_ssm_region: "'us-east-1'"
+  ansible_aws_ssm_bucket_name: "lookup('ansible.builtin.env', 'ANSIBLE_SSM_BUCKET')"

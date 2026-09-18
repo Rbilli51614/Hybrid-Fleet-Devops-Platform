@@ -1,0 +1,19 @@
+---
+# Wires the dev VM-tier bootstrap to terraform/live/dev/vm-k8s's actual
+# state. Regenerate this file's overridable values after every apply:
+#
+#   cd terraform/live/dev/vm-k8s
+#   echo "join_token_ssm_path: \"$(terragrunt output -raw join_token_ssm_path)\"" \
+#     > ../../../../ansible/inventories/dev/group_vars/vm_k8s_outputs.yml
+#
+# (kept as a separate generated file rather than edited in place here, so
+# this file's defaults stay meaningful for anyone reading the repo cold)
+
+aws_region: "us-east-1"
+cluster_name: "hybrid-fleet-vm-k8s"
+
+# Matches terraform/modules/vm-k8s-asg's default (join_token_ssm_path unset
+# there resolves to "/<cluster_name>/join-command"). If that variable is
+# ever overridden in terraform/live/dev/vm-k8s, override it here too — or
+# better, regenerate via vm_k8s_outputs.yml (see above) so this can't drift.
+join_token_ssm_path: "/hybrid-fleet-vm-k8s/join-command"

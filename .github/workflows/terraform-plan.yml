@@ -54,6 +54,8 @@ jobs:
           - terraform/live/dev/eks
           - terraform/live/dev/karpenter
           - terraform/live/dev/arc
+          - terraform/live/dev/onprem-vpc
+          - terraform/live/dev/vm-k8s
     steps:
       - uses: actions/checkout@v4
 

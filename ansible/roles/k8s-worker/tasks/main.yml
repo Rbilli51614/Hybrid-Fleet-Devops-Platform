@@ -1,0 +1,24 @@
+---
+- name: Check whether this node has already joined the cluster
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+# Waits out the (unlikely but possible) race where a worker boots before
+# the control-plane role has published the join command — runs with this
+# instance's own IAM role (via IMDS); see terraform/modules/vm-k8s-asg's
+# per-role SSM Parameter Store IAM policy. The lookup raises an error if
+# the parameter doesn't exist yet, which `until` treats as "not succeeded
+# — retry" same as it would a failed module call.
+- name: Wait for the control-plane join command to be published
+  ansible.builtin.set_fact:
+    kubeadm_join_command: "{{ lookup('amazon.aws.ssm_parameter', join_token_ssm_path, region=aws_region, decrypt=true) }}"
+  register: join_command_lookup
+  until: join_command_lookup is succeeded
+  retries: "{{ join_command_wait_retries }}"
+  delay: "{{ join_command_wait_delay }}"
+  when: not kubelet_conf.stat.exists
+
+- name: Join the cluster
+  ansible.builtin.command: "{{ kubeadm_join_command }}"
+  when: not kubelet_conf.stat.exists

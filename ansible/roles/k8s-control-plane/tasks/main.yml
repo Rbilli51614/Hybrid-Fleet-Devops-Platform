@@ -1,0 +1,51 @@
+---
+- name: Check whether this node has already been initialized
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_admin_conf
+
+- name: kubeadm init
+  ansible.builtin.command: >
+    kubeadm init
+    --pod-network-cidr={{ pod_network_cidr }}
+    --upload-certs
+  when: not kubeadm_admin_conf.stat.exists
+
+- name: Ensure a kubeconfig directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME | default('/root') }}/.kube"
+    state: directory
+    mode: "0700"
+
+- name: Copy the admin kubeconfig into place
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+    remote_src: true
+    mode: "0600"
+
+- name: Install the Calico CNI
+  kubernetes.core.k8s:
+    state: present
+    src: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+    kubeconfig: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+
+# --ttl 0: a non-expiring token. Pragmatic for a self-healing ASG that can
+# replace a worker well past the default 24h token lifetime, at the cost of
+# a long-lived bootstrap secret — see terraform/modules/vm-k8s-asg/README.md
+# for the tradeoff and the real fix (token-rotation job) at larger scale.
+- name: Generate a non-expiring kubeadm join command
+  ansible.builtin.command: kubeadm token create --ttl 0 --print-join-command
+  register: kubeadm_join_command
+  changed_when: false
+
+# Runs with this instance's own IAM role (via IMDS) — see
+# terraform/modules/vm-k8s-asg's per-role SSM Parameter Store IAM policy.
+- name: Publish the join command to SSM Parameter Store
+  community.aws.ssm_parameter:
+    name: "{{ join_token_ssm_path }}"
+    description: "kubeadm join command for {{ cluster_name }} worker nodes"
+    string_type: SecureString
+    value: "{{ kubeadm_join_command.stdout }}"
+    overwrite_value: always
+    region: "{{ aws_region }}"

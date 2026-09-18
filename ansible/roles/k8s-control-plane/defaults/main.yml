@@ -1,0 +1,10 @@
+---
+pod_network_cidr: "192.168.0.0/16" # Calico's default; must match the CNI manifest below if you change it
+calico_version: "v3.28.0"
+
+# Must be set from terraform/live/dev/vm-k8s outputs — no safe default,
+# deliberately left unset so a run without -e fails loudly instead of
+# writing to the wrong path.
+join_token_ssm_path: ""
+aws_region: "us-east-1"
+cluster_name: "hybrid-fleet-vm-k8s"

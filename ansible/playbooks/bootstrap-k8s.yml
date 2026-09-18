@@ -1,0 +1,29 @@
+---
+# Bootstraps the self-managed kubeadm cluster on the VM tier that
+# terraform/live/dev/vm-k8s provisions. Run after that stack has applied,
+# with the Terraform outputs it needs passed in — see
+# ansible/inventories/dev/group_vars/all.yml.
+#
+#   ansible-playbook playbooks/bootstrap-k8s.yml
+#
+# Idempotent: safe to re-run (e.g. after Terraform replaces an unhealthy
+# worker instance) — each role checks whether its node already
+# initialized/joined before doing anything.
+
+- name: Common Kubernetes node prerequisites
+  hosts: control_plane:worker
+  become: true
+  roles:
+    - k8s-common
+
+- name: Initialize the control plane
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-control-plane
+
+- name: Join worker nodes to the cluster
+  hosts: worker
+  become: true
+  roles:
+    - k8s-worker

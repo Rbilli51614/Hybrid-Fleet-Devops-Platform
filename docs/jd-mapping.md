@@ -5,7 +5,7 @@ Reference role: DevOps Engineer II / Platform Engineer (embedded model, hybrid c
 | JD Requirement | Project Component |
 |---|---|
 | CI/CD on Jenkins + GitHub Actions, self-hosted runners | ARC-managed, autoscaled GitHub Actions runners on EKS |
-| Kubernetes across EKS and NKP (VM environments) | EKS (Karpenter) + kubeadm/k3s on persistent EC2 ASG |
+| Kubernetes across EKS and NKP (VM environments) | EKS (Karpenter) + kubeadm on persistent EC2 ASGs |
 | Shared Terraform modules / reusable GitHub Actions components | Versioned module registry (git-tag pinned) + Terragrunt |
 | Nexus Sonatype artifact repo on VMs | Nexus OSS on EC2 + EBS, S3-backed backup/restore runbook |
 | AWS networking, IAM, storage, compute | VPC/VPN design, IRSA + SSM-based IAM, S3, EC2, EKS |

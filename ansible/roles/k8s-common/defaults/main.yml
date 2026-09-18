@@ -1,0 +1,12 @@
+---
+# Kubernetes apt repo series (pkgs.k8s.io), e.g. "v1.30". Keep in step with
+# terraform/modules/eks-cluster's kubernetes_version default so both tiers
+# run comparable control-plane versions — see docs/pitfalls.md on why
+# version drift between the two tiers is worth avoiding.
+kubernetes_apt_series: "v1.30"
+
+# Exact apt package version to pin kubelet/kubeadm/kubectl to. Bump
+# deliberately, not via unpinned `apt install kubeadm` — an unplanned
+# minor-version jump on a self-managed control plane is exactly the
+# "you own the upgrades" burden this VM tier exists to demonstrate.
+kubernetes_package_version: "1.30.5-1.1"

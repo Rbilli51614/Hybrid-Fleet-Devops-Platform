@@ -1,0 +1,9 @@
+---
+# Must be set from terraform/live/dev/vm-k8s outputs — no safe default,
+# deliberately left unset so a run without -e fails loudly instead of
+# reading from the wrong path.
+join_token_ssm_path: ""
+aws_region: "us-east-1"
+
+join_command_wait_retries: 30
+join_command_wait_delay: 20
