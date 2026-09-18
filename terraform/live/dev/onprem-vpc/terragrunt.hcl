@@ -18,7 +18,7 @@ inputs = {
   # plenty and keeps cost down.
   single_nat_gateway = true
 
-  # No eks_cluster_name: this VPC hosts the self-managed kubeadm/k3s tier,
+  # No eks_cluster_name: this VPC hosts the self-managed kubeadm tier,
   # not EKS, so none of the Karpenter/ALB discovery tags apply here.
 
   tags = {

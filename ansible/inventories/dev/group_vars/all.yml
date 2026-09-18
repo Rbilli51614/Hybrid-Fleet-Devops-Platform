@@ -7,7 +7,10 @@
 #     > ../../../../ansible/inventories/dev/group_vars/vm_k8s_outputs.yml
 #
 # (kept as a separate generated file rather than edited in place here, so
-# this file's defaults stay meaningful for anyone reading the repo cold)
+# this file's defaults stay meaningful for anyone reading the repo cold —
+# but note "vm_k8s_outputs" isn't a real inventory group, so that file is
+# NOT auto-loaded the way this one is; pass it explicitly with
+# `-e @inventories/dev/group_vars/vm_k8s_outputs.yml`, see ansible/README.md)
 
 aws_region: "us-east-1"
 cluster_name: "hybrid-fleet-vm-k8s"

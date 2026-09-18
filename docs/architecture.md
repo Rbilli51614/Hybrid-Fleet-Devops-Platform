@@ -17,7 +17,7 @@ A **Hybrid Fleet DevOps Platform**: a single control plane that gives cloud-nati
 
 Core components:
 
-- **Two Kubernetes tiers**: EKS with Karpenter (cloud-native, autoscaled) + a self-managed kubeadm/k3s cluster on a persistent EC2 Auto Scaling Group (stands in for Nutanix NKP on VMs — same operational shape: you own the control plane, the CNI, the upgrades).
+- **Two Kubernetes tiers**: EKS with Karpenter (cloud-native, autoscaled) + a self-managed kubeadm cluster on a persistent EC2 Auto Scaling Group (stands in for Nutanix NKP on VMs — same operational shape: you own the control plane, the CNI, the upgrades; see [`decision-stack.md`](decision-stack.md) for why kubeadm over k3s).
 - **Self-hosted GitHub Actions Runner Controller (ARC)** running as ephemeral, autoscaled runner pods on EKS, registered against the org's GitHub App.
 - **Shared Terraform module registry** (versioned, git-tag based) consumed by both clusters' IaC, enforced via Terragrunt.
 - **Nexus Sonatype OSS** on a dedicated EC2 instance (deliberately *not* containerized-on-K8s) with EBS + S3-backed backup and restore runbook.
@@ -43,7 +43,7 @@ Core components:
         ┌───────────────┼───────────────┐                    ┌───────────────┼───────────────┐
         │               │               │                    │               │               │
 ┌───────▼──────┐ ┌──────▼───────┐ ┌─────▼──────┐    ┌─────────▼────────┐ ┌────▼─────┐ ┌───────▼──────┐
-│  EKS Cluster │ │  ARC Runner  │ │ Karpenter  │    │ kubeadm/k3s on   │ │  Nexus   │ │  OTel Collector│
+│  EKS Cluster │ │  ARC Runner  │ │ Karpenter  │    │ kubeadm          │ │  Nexus   │ │  OTel Collector│
 │  (app + CI)  │ │  Pods (ARC)  │ │ NodePools  │    │ EC2 ASG (persist)│ │ Sonatype │ │  (VM-side)    │
 └───────┬──────┘ └──────┬───────┘ └────────────┘    └─────────┬────────┘ │ (EC2+EBS)│ └───────┬──────┘
         │               │                                     │          └────┬─────┘         │
@@ -131,7 +131,7 @@ On top of the tunnel: a Route 53 private hosted zone (`terraform/modules/private
 
 ## Policy parity: identical is a literal claim, not a diagram label
 
-`terraform/modules/opa-gatekeeper` (EKS, via Terraform's helm provider) and `ansible/roles/opa-gatekeeper` (the VM tier, via `kubernetes.core.helm` over SSM) both exist for one reason: the *controller* installation mechanism necessarily differs per tier — there's no Terraform-managed Kubernetes layer on the VM tier to attach a `helm_release` to — but the chart version and values are kept identical between them by convention (each declares the same default, cross-referenced in both READMEs). That's the split every controller in this repo follows.
+`terraform/modules/opa-gatekeeper` (EKS, via Terraform's helm provider) and `ansible/roles/opa-gatekeeper` (the VM tier, via `kubernetes.core.helm` over SSM) both exist for one reason: the *controller* installation mechanism necessarily differs per tier — there's no Terraform-managed Kubernetes layer on the VM tier to attach a `helm_release` to — but the chart version and policy-relevant config are kept identical between them by convention (each declares the same default, cross-referenced in both READMEs) — replica count is the one deliberate exception (2 on EKS, 1 on the VM tier's single control-plane node), an availability/resource-footprint choice, not a policy-parity gap. That's the split every controller in this repo follows.
 
 The actual policy — `ConstraintTemplate`s and `Constraint`s — sidesteps the split entirely: [`kubernetes/base/opa-gatekeeper/`](../kubernetes/base/opa-gatekeeper/) and [`policy/gatekeeper-constraints/`](../policy/gatekeeper-constraints/) are `kubectl apply`-ed with the *exact same command* against both clusters' kubeconfigs. No per-tier templating, no environment-specific values — the same YAML, twice. That's what makes "policy parity" here a literal, checkable claim rather than an architectural aspiration.
 

@@ -34,7 +34,10 @@ roles/
 cd ansible
 ansible-galaxy collection install -r requirements.yml
 
-# Wire in this environment's Terraform outputs (join_token_ssm_path etc.)
+# Only needed if join_token_ssm_path was overridden away from
+# terraform/modules/vm-k8s-asg's default in terraform/live/dev/vm-k8s —
+# group_vars/all.yml's own checked-in default already matches that
+# module's default, so skip this unless you've changed it there.
 cd ../terraform/live/dev/vm-k8s
 echo "join_token_ssm_path: \"$(terragrunt output -raw join_token_ssm_path)\"" \
   > ../../../../ansible/inventories/dev/group_vars/vm_k8s_outputs.yml
@@ -44,7 +47,13 @@ echo "join_token_ssm_path: \"$(terragrunt output -raw join_token_ssm_path)\"" \
 export ANSIBLE_SSM_BUCKET="$(terragrunt output -raw ssm_transfer_bucket_name)"
 cd ../../../../ansible
 
-ansible-playbook playbooks/bootstrap-k8s.yml
+# vm_k8s_outputs.yml's filename doesn't match a real inventory group, so
+# Ansible won't auto-load it from group_vars/ the way all.yml is. Only
+# pass -e @path if you generated the override above (ansible-playbook
+# errors on a missing -e file) — otherwise omit it and rely on
+# group_vars/all.yml's checked-in default:
+ansible-playbook playbooks/bootstrap-k8s.yml \
+  -e @inventories/dev/group_vars/vm_k8s_outputs.yml   # omit if you skipped the override step
 ```
 
 Idempotent: safe to re-run after Terraform replaces an unhealthy instance — each role checks whether its node has already initialized/joined before doing anything (see [`terraform/modules/vm-k8s-asg/README.md`](../terraform/modules/vm-k8s-asg/README.md) for the kubeadm-token-vs-ASG-replacement tradeoff this depends on).

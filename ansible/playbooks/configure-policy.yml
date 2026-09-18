@@ -1,10 +1,13 @@
 ---
 # Installs the Gatekeeper controller on the VM-tier cluster — the same
-# chart version/config terraform/modules/opa-gatekeeper installs on EKS,
-# via a different mechanism (helm CLI over SSM here, Terraform's helm
-# provider there) but an identical result. Run after playbooks/
-# bootstrap-k8s.yml (needs the control-plane's kubeconfig already in
-# place).
+# chart version and policy-relevant config (audit interval, etc.)
+# terraform/modules/opa-gatekeeper installs on EKS, via a different
+# mechanism (helm CLI over SSM here, Terraform's helm provider there).
+# Replica count intentionally differs (1 here vs. 2 on EKS — see
+# ansible/roles/opa-gatekeeper/defaults/main.yml); that's an
+# availability/resource-footprint choice, not a policy-parity gap. Run
+# after playbooks/bootstrap-k8s.yml (needs the control-plane's kubeconfig
+# already in place).
 #
 #   ansible-playbook playbooks/configure-policy.yml
 #
@@ -14,7 +17,7 @@
 # policy/gatekeeper-constraints/. See those directories' READMEs.
 
 - name: Install policy parity (Gatekeeper controller)
-  hosts: control_plane
+  hosts: control-plane
   become: true
   roles:
     - opa-gatekeeper
