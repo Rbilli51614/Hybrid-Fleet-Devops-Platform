@@ -1,14 +1,18 @@
 # eks-cluster
 
-EKS control plane, IAM OIDC provider (for IRSA), and a small on-demand core system node group that hosts kube-system components — including the Karpenter controller itself, which must run somewhere before it can provision any further capacity.
+EKS control plane, IAM OIDC provider (for IRSA), a small on-demand core system node group that hosts kube-system components — including the Karpenter controller itself, which must run somewhere before it can provision any further capacity — and the four EKS-managed addons that keep that node group usable (`vpc-cni`, `coredns`, `kube-proxy`, `aws-ebs-csi-driver`).
 
 Versioned via git tags (`modules/eks-cluster/vX.Y.Z`) — see [module registry convention](../../../docs/architecture.md#module-registry-convention).
+
+## Why `aws-ebs-csi-driver` gets its own IRSA role and the other three addons don't
+
+`vpc-cni`, `coredns`, and `kube-proxy` don't call AWS APIs on their own behalf — they only need what the node's own networking/DNS already provides. `aws-ebs-csi-driver` does (EC2 `DescribeVolumes`, `CreateVolume`, `AttachVolume`, etc.), so it needs real IAM permissions the same way every other AWS-calling controller in this repo gets them: IRSA, via this module's own `../iam-irsa` module, scoped to the addon's well-known service account (`kube-system:ebs-csi-controller-sa`) with the `AmazonEBSCSIDriverPolicy` managed policy attached. This was caught on a real apply, not by `terraform validate` or a mocked plan: without it, the addon's controller pods sit in `CrashLoopBackOff` with `"no EC2 IMDS role found"` — there's no fallback credential path once a pod is on the network, not even to the node's own instance role.
 
 ## Example
 
 ```hcl
 module "eks" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.1"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.2"
 
   cluster_name       = "hybrid-fleet-eks"
   kubernetes_version = "1.31"

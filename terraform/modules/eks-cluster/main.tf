@@ -178,12 +178,33 @@ resource "aws_eks_node_group" "core" {
 # Managed addons
 # ---------------------------------------------------------------------------
 
+# aws-ebs-csi-driver is the one addon here that actually calls AWS APIs
+# (EC2/EBS) on its own behalf, so — unlike vpc-cni/coredns/kube-proxy — it
+# needs real IAM permissions, via IRSA like every other AWS-calling
+# controller in this repo. Without this, its controller pods have no
+# credentials path at all (not even IMDS node-role fallback in practice)
+# and sit in CrashLoopBackOff: "no EC2 IMDS role found" — caught on a real
+# apply, not something `terraform validate` or a mocked plan could surface.
+module "ebs_csi_irsa" {
+  source = "../iam-irsa"
+
+  role_name            = "${var.cluster_name}-ebs-csi-driver"
+  oidc_provider_arn    = aws_iam_openid_connect_provider.cluster.arn
+  oidc_provider_url    = replace(aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "")
+  namespace            = "kube-system"
+  service_account_name = "ebs-csi-controller-sa"
+  policy_arns          = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
+  tags                 = var.tags
+}
+
 resource "aws_eks_addon" "this" {
   for_each = var.cluster_addons
 
   cluster_name  = aws_eks_cluster.this.name
   addon_name    = each.key
   addon_version = each.value.version
+
+  service_account_role_arn = each.key == "aws-ebs-csi-driver" ? module.ebs_csi_irsa.role_arn : null
 
   resolve_conflicts_on_update = "OVERWRITE"
 
