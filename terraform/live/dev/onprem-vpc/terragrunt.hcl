@@ -22,6 +22,7 @@ inputs = {
   # not EKS, so none of the Karpenter/ALB discovery tags apply here.
 
   tags = {
-    Tier = "onprem"
+    Tier       = "onprem"
+    CostCenter = "platform-engineering"
   }
 }

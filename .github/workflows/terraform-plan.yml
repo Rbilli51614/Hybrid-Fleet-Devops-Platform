@@ -63,6 +63,11 @@ jobs:
           - terraform/live/dev/opa-gatekeeper
           - terraform/live/dev/observability
           - terraform/live/dev/otel-collector
+          # No dependency block, so plans cleanly regardless of matrix
+          # ordering — but a real apply must wait until the tags above have
+          # existed on a resource for ~24h, see
+          # terraform/modules/cost-allocation-tags/README.md.
+          - terraform/live/global/cost-allocation-tags
     steps:
       - uses: actions/checkout@v4
 

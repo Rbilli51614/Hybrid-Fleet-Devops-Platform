@@ -29,6 +29,7 @@ inputs = {
   amp_remote_write_url = dependency.observability.outputs.amp_remote_write_url
 
   tags = {
-    Tier = "cloud"
+    Tier       = "cloud"
+    CostCenter = "platform-engineering"
   }
 }

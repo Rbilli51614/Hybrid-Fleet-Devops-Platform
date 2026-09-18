@@ -6,7 +6,7 @@ All four exclude `kube-system`, `kube-node-lease`, `kube-public`, and `gatekeepe
 
 ## Files
 
-- `require-team-label.yaml` — every `Deployment` needs a `team` label. Ties directly to [`docs/decision-stack.md`](../../docs/decision-stack.md)'s Cost layer: per-team cost allocation tagging needs the label to exist before it can mean anything.
+- `require-team-label.yaml` — every `Deployment` needs a `team` label. Ties directly to [`docs/decision-stack.md`](../../docs/decision-stack.md)'s Cost layer: per-team cost allocation tagging needs the label to exist before it can mean anything. The AWS-side half of that story — activating cost allocation tags, and the account-level bridge that imports these K8s labels into Cost Explorer/CUR — is [`terraform/modules/cost-allocation-tags`](../../terraform/modules/cost-allocation-tags/).
 - `require-container-limits.yaml` — every `Pod`'s containers need CPU and memory limits set.
 - `disallow-latest-tag.yaml` — blocks images ending in `:latest`.
 - `block-privileged-containers.yaml` — blocks `securityContext.privileged: true`.

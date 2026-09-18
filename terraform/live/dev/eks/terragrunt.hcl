@@ -36,6 +36,7 @@ inputs = {
   core_node_max_size       = 3
 
   tags = {
-    Tier = "cloud"
+    Tier       = "cloud"
+    CostCenter = "platform-engineering"
   }
 }

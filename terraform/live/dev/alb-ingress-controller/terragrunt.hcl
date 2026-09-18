@@ -26,6 +26,7 @@ inputs = {
   oidc_provider_url = dependency.eks.outputs.oidc_provider_url
 
   tags = {
-    Tier = "cloud"
+    Tier       = "cloud"
+    CostCenter = "platform-engineering"
   }
 }

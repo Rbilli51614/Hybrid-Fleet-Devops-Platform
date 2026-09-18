@@ -63,6 +63,7 @@ inputs = {
   }
 
   tags = {
-    Tier = "onprem"
+    Tier       = "onprem"
+    CostCenter = "platform-engineering"
   }
 }

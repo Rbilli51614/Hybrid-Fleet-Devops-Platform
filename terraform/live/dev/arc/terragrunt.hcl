@@ -20,6 +20,7 @@ inputs = {
   runner_irsa_policy_json = null
 
   tags = {
-    Tier = "cloud"
+    Tier       = "cloud"
+    CostCenter = "platform-engineering"
   }
 }

@@ -10,6 +10,6 @@ Reference role: DevOps Engineer II / Platform Engineer (embedded model, hybrid c
 | Nexus Sonatype artifact repo on VMs | Nexus OSS on EC2 + EBS, S3-backed backup/restore runbook |
 | AWS networking, IAM, storage, compute | VPC design, real Site-to-Site VPN (VGW + self-managed strongSwan), Route 53 private DNS, ALB Ingress, IRSA + SSM-based IAM, S3, EC2, EKS |
 | Observability: logging, metrics, tracing | Amazon Managed Prometheus/Grafana + OpenTelemetry Collector + CloudWatch |
-| On-call, incident triage across distributed systems | Alertmanager → PagerDuty/OpsGenie routing, versioned runbooks in-repo |
+| On-call, incident triage across distributed systems | Alertmanager/SNS → PagerDuty/OpsGenie routing, versioned in-repo runbooks ([`on-call-triage.md`](../docs/runbooks/on-call-triage.md), [`nexus-backup-restore.md`](../docs/runbooks/nexus-backup-restore.md)) |
 | IaC + config management (Terraform, Ansible/Chef/Puppet) | Terraform/Terragrunt for provisioning; Ansible for VM-tier k8s bootstrap and Nexus config |
 | Comfort in Linux/VM-based environments | Nexus and the VM-tier Kubernetes cluster are both unmanaged, self-administered Linux hosts |

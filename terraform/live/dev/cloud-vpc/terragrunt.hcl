@@ -18,6 +18,7 @@ inputs = {
   eks_cluster_name   = "hybrid-fleet-eks"
 
   tags = {
-    Tier = "cloud"
+    Tier       = "cloud"
+    CostCenter = "platform-engineering"
   }
 }

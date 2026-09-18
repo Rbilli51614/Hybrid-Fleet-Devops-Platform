@@ -53,6 +53,7 @@ inputs = {
   dns_record_name = "nexus.${dependency.dns.outputs.zone_name}"
 
   tags = {
-    Tier = "onprem"
+    Tier       = "onprem"
+    CostCenter = "platform-engineering"
   }
 }

@@ -13,7 +13,7 @@ terraform/
   modules/          # Shared, git-tag-versioned Terraform modules (the "private registry") — see docs/architecture.md
   _envcommon/       # Shared Terragrunt config fragments (currently: the EKS-controller helm-provider pattern)
   live/              # Terragrunt live environments that consume the modules, by tag
-    global/          # Account-level bootstrap (Terraform state backend)
+    global/          # Account-level bootstrap (Terraform state backend, cost allocation tag activation)
     dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, ALB Ingress, OPA/Gatekeeper, OTel Collector, on-prem VPC, VM-tier K8s, VPN, DNS, Nexus, observability)
 ansible/             # Config management for the VM tier: kubeadm bootstrap, Gatekeeper, OTel Collector, Nexus (all over SSM, no SSH)
 kubernetes/
@@ -38,7 +38,7 @@ This is being built in phases, each independently demonstrable:
 - [x] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), standalone EBS data volume that outlives instance replacement, S3 lifecycle-managed daily backups, and a full [restore runbook](docs/runbooks/nexus-backup-restore.md).
 - [x] **Phase 7 — Policy parity.** OPA/Gatekeeper controller on both clusters (Terraform+Helm on EKS, Ansible+Helm on the VM tier — same chart version/config, different invocation), with the same `ConstraintTemplate`/`Constraint` YAML `kubectl`-applied identically to both.
 - [x] **Phase 8 — Federated observability.** Amazon Managed Prometheus (+ its managed Alertmanager) and Amazon Managed Grafana, an OpenTelemetry Collector on both tiers sharing one literal pipeline-config file, and CloudWatch alarms (EC2 status checks, VPN tunnel state) routed to PagerDuty/OpsGenie via SNS in parallel to Prometheus-evaluated alerts.
-- [ ] **Phase 9 — Runbooks & on-call discipline.** Versioned in-repo runbooks, cost allocation tags per team.
+- [x] **Phase 9 — Runbooks & on-call discipline.** [`docs/runbooks/on-call-triage.md`](docs/runbooks/on-call-triage.md), a first-response guide keyed off the exact alarm names/thresholds in `terraform/modules/observability`. Cost allocation tags per team as two mechanisms: `terraform/modules/cost-allocation-tags` activates `Project`/`Environment`/`Tier`/`CostCenter` for AWS resources, and the pre-existing `require-team-label.yaml` Gatekeeper constraint bridges into Cost Explorer via AWS's Split Cost Allocation Data for EKS once tenant workloads exist.
 
 ## Getting Started
 
@@ -90,6 +90,11 @@ cd ../vpn                     && terragrunt init && terragrunt apply
 # 6. Nexus (depends on ../dns for its internal DNS record), then install it
 #    — see ansible/README.md for the full Ansible wiring steps
 cd ../nexus && terragrunt init && terragrunt apply
+
+# 7. Activate cost allocation tags — apply this LAST, and not until the
+#    above tags have existed on a resource for ~24h (AWS requirement, see
+#    terraform/modules/cost-allocation-tags/README.md)
+cd ../../global/cost-allocation-tags && terragrunt init && terragrunt apply
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full system diagram and [`docs/runbooks/`](docs/runbooks/) for operational procedures.

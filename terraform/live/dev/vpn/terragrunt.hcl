@@ -42,6 +42,7 @@ inputs = {
   tunnel_parameter_path = "/hybrid-fleet/vpn"
 
   tags = {
-    Tier = "onprem"
+    Tier       = "onprem"
+    CostCenter = "platform-engineering"
   }
 }

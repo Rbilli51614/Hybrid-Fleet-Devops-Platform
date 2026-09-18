@@ -42,6 +42,7 @@ inputs = {
   grafana_admin_sso_user_ids   = []
 
   tags = {
-    Tier = "shared"
+    Tier       = "shared"
+    CostCenter = "platform-engineering"
   }
 }

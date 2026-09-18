@@ -30,6 +30,7 @@ inputs = {
   additional_vpc_ids = [dependency.onprem_vpc.outputs.vpc_id]
 
   tags = {
-    Tier = "shared"
+    Tier       = "shared"
+    CostCenter = "platform-engineering"
   }
 }
