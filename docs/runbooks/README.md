@@ -1,8 +1,7 @@
 # Runbooks
 
-Operational runbooks, versioned alongside the infrastructure they describe. Populated starting in Phase 6 (Nexus backup/restore) and Phase 9 (on-call triage) — see the [top-level roadmap](../../README.md#build-roadmap).
+Operational runbooks, versioned alongside the infrastructure they describe.
 
-Planned:
+- [`nexus-backup-restore.md`](nexus-backup-restore.md) — daily stop/tar/restart backup to S3 (via `ansible/roles/nexus`'s systemd timer), and the step-by-step restore procedure.
 
-- `nexus-backup-restore.md` — EBS snapshot + S3 lifecycle backup, and the restore procedure.
-- `on-call-triage.md` — first-response steps for alerts fired from either K8s tier, with links to the relevant Grafana dashboards.
+Planned: `on-call-triage.md` — first-response steps for alerts fired from either K8s tier, with links to the relevant Grafana dashboards. See Phase 9 in the [top-level roadmap](../../README.md#build-roadmap).

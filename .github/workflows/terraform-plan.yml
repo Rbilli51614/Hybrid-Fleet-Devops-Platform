@@ -59,6 +59,7 @@ jobs:
           - terraform/live/dev/vm-k8s
           - terraform/live/dev/dns
           - terraform/live/dev/vpn
+          - terraform/live/dev/nexus
     steps:
       - uses: actions/checkout@v4
 

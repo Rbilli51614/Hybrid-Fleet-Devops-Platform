@@ -1,0 +1,17 @@
+---
+# Installs and configures Nexus (Java, the app itself, systemd unit, and
+# the daily S3 backup timer) on the instance terraform/live/dev/nexus
+# provisions. Run after that stack has applied.
+#
+#   ansible-playbook playbooks/configure-nexus.yml \
+#     -e nexus_backup_s3_bucket=<terragrunt output -raw backup_bucket_name>
+#
+# Idempotent: safe to re-run — install/format/mount steps check current
+# state first, and config file changes only restart the service when they
+# actually change something.
+
+- name: Configure Nexus
+  hosts: nexus
+  become: true
+  roles:
+    - nexus

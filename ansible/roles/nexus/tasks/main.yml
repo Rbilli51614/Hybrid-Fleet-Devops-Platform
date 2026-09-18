@@ -1,0 +1,192 @@
+---
+- name: Install a JRE
+  ansible.builtin.apt:
+    name: openjdk-17-jre-headless
+    state: present
+    update_cache: true
+
+- name: Create the nexus group
+  ansible.builtin.group:
+    name: "{{ nexus_group }}"
+    system: true
+
+- name: Create the nexus user
+  ansible.builtin.user:
+    name: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ nexus_install_dir }}"
+    create_home: false
+
+# ---------------------------------------------------------------------------
+# Data volume: found by diffing the block-device list against the root
+# device rather than assuming a specific name — see defaults/main.yml.
+# ---------------------------------------------------------------------------
+
+- name: Determine the root block device
+  ansible.builtin.shell: findmnt -n -o SOURCE / | sed -E 's/p?[0-9]+$//'
+  register: nexus_root_device
+  changed_when: false
+
+- name: List all top-level disk block devices
+  ansible.builtin.shell: lsblk -dn -o NAME,TYPE | awk '$2=="disk"{print "/dev/"$1}'
+  register: nexus_all_disks
+  changed_when: false
+
+- name: Identify the data volume's actual device path
+  ansible.builtin.set_fact:
+    nexus_data_device: "{{ nexus_all_disks.stdout_lines | reject('equalto', nexus_root_device.stdout | trim) | list | first }}"
+
+- name: Check whether the data volume already has a filesystem
+  ansible.builtin.command: "blkid {{ nexus_data_device }}"
+  register: nexus_data_blkid
+  changed_when: false
+  failed_when: false
+
+- name: Create a filesystem on the data volume (first boot only)
+  community.general.filesystem:
+    dev: "{{ nexus_data_device }}"
+    fstype: "{{ nexus_data_filesystem }}"
+  when: nexus_data_blkid.rc != 0
+
+- name: Ensure the data mount point exists
+  ansible.builtin.file:
+    path: "{{ nexus_data_dir }}"
+    state: directory
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    mode: "0750"
+
+- name: Mount the data volume
+  ansible.posix.mount:
+    path: "{{ nexus_data_dir }}"
+    src: "{{ nexus_data_device }}"
+    fstype: "{{ nexus_data_filesystem }}"
+    state: mounted
+
+- name: Ensure the mount point is owned by the nexus user (post-mount)
+  ansible.builtin.file:
+    path: "{{ nexus_data_dir }}"
+    state: directory
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    mode: "0750"
+
+# ---------------------------------------------------------------------------
+# Nexus install
+# ---------------------------------------------------------------------------
+
+- name: Check whether this Nexus version is already installed
+  ansible.builtin.stat:
+    path: "{{ nexus_install_dir }}/nexus-{{ nexus_version }}"
+  register: nexus_installed
+
+- name: Download and extract Nexus
+  ansible.builtin.unarchive:
+    src: "https://download.sonatype.com/nexus/3/nexus-{{ nexus_version }}-unix.tar.gz"
+    dest: "{{ nexus_install_dir | dirname }}"
+    remote_src: true
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+  when: not nexus_installed.stat.exists
+
+- name: Symlink the versioned install to a stable path
+  ansible.builtin.file:
+    src: "{{ nexus_install_dir | dirname }}/nexus-{{ nexus_version }}"
+    dest: "{{ nexus_install_dir }}"
+    state: link
+    force: true
+
+- name: Point Nexus at the data volume
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_install_dir }}/bin/nexus.rc"
+    regexp: "^#?run_as_user="
+    line: "run_as_user=\"{{ nexus_user }}\""
+    create: true
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    mode: "0644"
+
+- name: Configure the Nexus data directory and JVM heap
+  ansible.builtin.template:
+    src: nexus.vmoptions.j2
+    dest: "{{ nexus_install_dir }}/bin/nexus.vmoptions"
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    mode: "0644"
+  notify: Restart nexus
+
+- name: Own the whole install/data tree
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ nexus_user }}"
+    group: "{{ nexus_group }}"
+    recurse: true
+  loop:
+    - "{{ nexus_install_dir | dirname }}/nexus-{{ nexus_version }}"
+    - "{{ nexus_data_dir }}"
+
+- name: Install the Nexus systemd unit
+  ansible.builtin.template:
+    src: nexus.service.j2
+    dest: /etc/systemd/system/nexus.service
+    mode: "0644"
+  register: nexus_unit
+  notify: Restart nexus
+
+- name: Reload systemd if the unit changed
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: nexus_unit.changed
+
+- name: Ensure Nexus is enabled and running
+  ansible.builtin.systemd:
+    name: nexus
+    enabled: true
+    state: started
+
+# ---------------------------------------------------------------------------
+# Backup: see docs/runbooks/nexus-backup-restore.md for the full procedure
+# this script and timer implement.
+# ---------------------------------------------------------------------------
+
+- name: Install the backup script
+  ansible.builtin.template:
+    src: backup-nexus.sh.j2
+    dest: /usr/local/bin/backup-nexus.sh
+    mode: "0750"
+
+- name: Install the backup systemd service
+  ansible.builtin.template:
+    src: nexus-backup.service.j2
+    dest: /etc/systemd/system/nexus-backup.service
+    mode: "0644"
+  register: nexus_backup_unit
+
+- name: Install the daily backup timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/nexus-backup.timer
+    content: |
+      [Unit]
+      Description=Daily Nexus backup to S3
+
+      [Timer]
+      OnCalendar=daily
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+    mode: "0644"
+  register: nexus_backup_timer
+
+- name: Reload systemd if the backup unit/timer changed
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: nexus_backup_unit.changed or nexus_backup_timer.changed
+
+- name: Enable the backup timer
+  ansible.builtin.systemd:
+    name: nexus-backup.timer
+    enabled: true
+    state: started

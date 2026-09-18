@@ -34,7 +34,7 @@ This is being built in phases, each independently demonstrable:
 - [x] **Phase 3 — VM tier.** "On-prem" VPC, persistent EC2 ASGs (control-plane + worker node groups), SSM-only IAM (no SSH), kubeadm bootstrap + Calico CNI via Ansible over the SSM connection plugin.
 - [x] **Phase 4 — Hybrid networking.** Real Site-to-Site VPN (VGW + self-managed strongSwan customer gateway, configured via Ansible over SSM) linking the cloud and on-prem VPCs, a Route 53 private hosted zone associated with both, and the AWS Load Balancer Controller for ALB Ingress on EKS.
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
-- [ ] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), EBS storage, S3 lifecycle-managed backup/restore runbook.
+- [x] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), standalone EBS data volume that outlives instance replacement, S3 lifecycle-managed daily backups, and a full [restore runbook](docs/runbooks/nexus-backup-restore.md).
 - [ ] **Phase 7 — Policy parity.** OPA/Gatekeeper deployed identically on both clusters.
 - [ ] **Phase 8 — Federated observability.** Amazon Managed Prometheus + Grafana, OpenTelemetry Collector on both tiers, CloudWatch, Alertmanager → PagerDuty/OpsGenie.
 - [ ] **Phase 9 — Runbooks & on-call discipline.** Versioned in-repo runbooks, cost allocation tags per team.
@@ -71,6 +71,10 @@ cd ../vm-k8s         && terragrunt init && terragrunt apply
 cd ../dns                     && terragrunt init && terragrunt apply
 cd ../alb-ingress-controller  && terragrunt init && terragrunt apply
 cd ../vpn                     && terragrunt init && terragrunt apply
+
+# 6. Nexus (depends on ../dns for its internal DNS record), then install it
+#    — see ansible/README.md for the full Ansible wiring steps
+cd ../nexus && terragrunt init && terragrunt apply
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full system diagram and [`docs/runbooks/`](docs/runbooks/) for operational procedures.

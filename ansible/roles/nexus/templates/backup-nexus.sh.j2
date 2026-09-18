@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+{{ ansible_managed | comment }}
+# Full procedure this script implements: docs/runbooks/nexus-backup-restore.md
+#
+# Stop/tar/restart, not a hot backup: simplest way to guarantee the DB and
+# blob store are consistent with each other in the archive, at the cost of
+# a brief maintenance window (Nexus's built-in "Export databases for
+# backup" task + a live blob-store copy would avoid that — see the runbook
+# for why this script doesn't do that yet).
+set -euo pipefail
+
+NEXUS_DATA_DIR="{{ nexus_data_dir }}"
+BACKUP_DIR="${NEXUS_DATA_DIR}/backups"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+ARCHIVE="${BACKUP_DIR}/nexus-backup-${TIMESTAMP}.tar.gz"
+S3_BUCKET="{{ nexus_backup_s3_bucket }}"
+AWS_REGION="{{ aws_region }}"
+RETENTION="{{ nexus_backup_retention_local }}"
+
+mkdir -p "${BACKUP_DIR}"
+
+echo "[$(date -u -Iseconds)] Stopping Nexus for a consistent backup..."
+systemctl stop nexus
+
+echo "[$(date -u -Iseconds)] Archiving ${NEXUS_DATA_DIR}..."
+tar \
+  --exclude="${NEXUS_DATA_DIR}/cache" \
+  --exclude="${NEXUS_DATA_DIR}/tmp" \
+  --exclude="${NEXUS_DATA_DIR}/log" \
+  --exclude="${NEXUS_DATA_DIR}/backups" \
+  -czf "${ARCHIVE}" -C / "${NEXUS_DATA_DIR#/}"
+
+echo "[$(date -u -Iseconds)] Restarting Nexus..."
+systemctl start nexus
+
+echo "[$(date -u -Iseconds)] Uploading $(basename "${ARCHIVE}") to s3://${S3_BUCKET}/..."
+aws s3 cp "${ARCHIVE}" "s3://${S3_BUCKET}/$(basename "${ARCHIVE}")" --region "${AWS_REGION}"
+
+echo "[$(date -u -Iseconds)] Pruning local backups beyond retention (${RETENTION})..."
+# shellcheck disable=SC2012
+ls -1t "${BACKUP_DIR}"/nexus-backup-*.tar.gz 2>/dev/null | tail -n "+$((RETENTION + 1))" | xargs -r rm -f
+
+echo "[$(date -u -Iseconds)] Backup complete: ${ARCHIVE}"

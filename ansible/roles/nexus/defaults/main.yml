@@ -1,0 +1,25 @@
+---
+nexus_version: "3.70.1-02"
+nexus_user: nexus
+nexus_group: nexus
+
+nexus_install_dir: /opt/nexus
+nexus_data_dir: /nexus-data
+
+# Nitro-based instance types (t3.* included) may expose EBS volumes as
+# NVMe block devices (/dev/nvme1n1) rather than the /dev/xvdf name
+# requested at attach time in terraform/modules/nexus-ec2 — the OS/kernel
+# decides the real path, not the attach request. Rather than assume one
+# naming scheme, tasks/main.yml discovers the data volume by diffing the
+# full block-device list against the root device (findmnt on /), so it
+# works either way.
+nexus_data_filesystem: ext4
+
+nexus_heap_min: "1200m"
+nexus_heap_max: "1200m"
+
+# Must match terraform/modules/nexus-ec2's outputs.backup_bucket_name for
+# the environment being configured — no safe default, deliberately unset.
+nexus_backup_s3_bucket: ""
+aws_region: "us-east-1"
+nexus_backup_retention_local: 3 # local copies kept in nexus_data_dir/backups before pruning

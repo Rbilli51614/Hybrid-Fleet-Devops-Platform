@@ -1,0 +1,11 @@
+{{ ansible_managed | comment }}
+-Xms{{ nexus_heap_min }}
+-Xmx{{ nexus_heap_max }}
+-XX:MaxDirectMemorySize=2g
+-XX:+UnlockDiagnosticVMOptions
+-XX:+UnsyncloadClass
+-XX:+LogVMOutput
+-XX:LogFile={{ nexus_data_dir }}/log/jvm.log
+-Djava.util.prefs.userRoot={{ nexus_data_dir }}/javaprefs
+-Dkaraf.data={{ nexus_data_dir }}
+-Djava.io.tmpdir={{ nexus_data_dir }}/tmp
