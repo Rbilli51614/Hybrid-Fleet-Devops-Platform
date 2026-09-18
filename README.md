@@ -49,18 +49,20 @@ Prerequisites: an AWS account, Terraform >= 1.7, Terragrunt >= 0.58, `kubectl`, 
 cd terraform/live/global/state-backend
 terraform init && terraform apply
 
-# 2. Deploy the cloud tier, in order (each stack reads the previous one's
-#    outputs via a Terragrunt `dependency` block)
+# 2. Both VPCs first — everything else in either tier needs one of these.
 cd terraform/live/dev/cloud-vpc  && terragrunt init && terragrunt apply
+cd ../onprem-vpc                 && terragrunt init && terragrunt apply
+
+# 3. EKS, then its controllers (each needs ../eks's outputs; karpenter/arc/
+#    alb-ingress-controller/opa-gatekeeper don't depend on each other, so
+#    this sub-order doesn't matter beyond all needing eks first)
 cd ../eks                        && terragrunt init && terragrunt apply
 cd ../karpenter                  && terragrunt init && terragrunt apply
 cd ../arc                        && terragrunt init && terragrunt apply
-
+cd ../alb-ingress-controller     && terragrunt init && terragrunt apply
 cd ../opa-gatekeeper              && terragrunt init && terragrunt apply
-cd ../observability               && terragrunt init && terragrunt apply
-cd ../otel-collector               && terragrunt init && terragrunt apply
 
-# 3. Apply the kubectl-managed cluster-native resources (Karpenter
+# 4. Apply the kubectl-managed cluster-native resources (Karpenter
 #    NodePools/EC2NodeClass, the OPA/Gatekeeper policy content, and —
 #    after registering runners, see terraform/modules/arc/README.md — the
 #    ARC runner scale set)
@@ -68,30 +70,38 @@ aws eks update-kubeconfig --name hybrid-fleet-eks --region us-east-1
 kubectl apply -f kubernetes/eks/karpenter/
 kubectl apply -f kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/
 
-# 4. Deploy the VM tier, then bootstrap kubeadm + Gatekeeper + the OTel
-#    Collector on it over SSM (no SSH) — see ansible/README.md for the
-#    full Ansible wiring steps. vm-k8s depends on ../observability (for
-#    its AMP remote-write IAM grant) even though that stack is applied
-#    later in this list — Terragrunt orders by the dependency graph, not
-#    by this list's order, so re-apply vm-k8s once ../observability exists.
-cd ../../onprem-vpc && terragrunt init && terragrunt apply
-cd ../vm-k8s         && terragrunt init && terragrunt apply
+# 5. Hybrid networking, in dependency order: DNS first (nexus's internal
+#    record depends on it), then the Site-to-Site VPN (then configure
+#    strongSwan — see ansible/README.md).
+cd ../dns  && terragrunt init && terragrunt apply
+cd ../vpn  && terragrunt init && terragrunt apply
+
+# 6. Nexus — depends on ../dns (done above); install it once applied, see
+#    ansible/README.md for the full Ansible wiring steps.
+cd ../nexus && terragrunt init && terragrunt apply
+
+# 7. Observability — depends on ../vpn and ../nexus (both just applied,
+#    for the VPN-tunnel and Nexus-status-check CloudWatch alarms), then
+#    otel-collector depends on ../observability for its AMP remote-write
+#    grant. Getting this order wrong is exactly the mistake to avoid: both
+#    dependencies are REAL (mock_outputs_allowed_terraform_commands
+#    excludes "apply"), so applying observability any earlier just fails
+#    outright rather than silently using placeholder ARNs.
+cd ../observability   && terragrunt init && terragrunt apply
+cd ../otel-collector  && terragrunt init && terragrunt apply
+
+# 8. VM tier — vm-k8s also depends on ../observability (for its own AMP
+#    remote-write IAM grant), so it comes after step 7, not interleaved
+#    with onprem-vpc back in step 2. Then bootstrap kubeadm + Gatekeeper +
+#    the OTel Collector on it over SSM (no SSH) — see ansible/README.md
+#    for the full Ansible wiring steps.
+cd ../vm-k8s && terragrunt init && terragrunt apply
 # (ansible-playbook playbooks/bootstrap-k8s.yml && playbooks/configure-policy.yml
 #  && playbooks/configure-observability.yml, then kubectl apply -f
 #  kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/ against
 #  the VM-tier kubeconfig too, to actually complete policy parity)
 
-# 5. Hybrid networking: DNS, ALB Ingress, and the Site-to-Site VPN linking
-#    the two VPCs (then configure strongSwan — see ansible/README.md)
-cd ../dns                     && terragrunt init && terragrunt apply
-cd ../alb-ingress-controller  && terragrunt init && terragrunt apply
-cd ../vpn                     && terragrunt init && terragrunt apply
-
-# 6. Nexus (depends on ../dns for its internal DNS record), then install it
-#    — see ansible/README.md for the full Ansible wiring steps
-cd ../nexus && terragrunt init && terragrunt apply
-
-# 7. Activate cost allocation tags — apply this LAST, and not until the
+# 9. Activate cost allocation tags — apply this LAST, and not until the
 #    above tags have existed on a resource for ~24h (AWS requirement, see
 #    terraform/modules/cost-allocation-tags/README.md)
 cd ../../global/cost-allocation-tags && terragrunt init && terragrunt apply
