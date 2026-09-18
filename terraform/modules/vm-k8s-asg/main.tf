@@ -143,7 +143,16 @@ locals {
   ssm_parameter_arn = "arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter${local.join_token_ssm_path}"
 
   ssm_parameter_actions_by_role = {
-    control-plane = ["ssm:PutParameter", "ssm:GetParameter"]
+    # ssm:ListTagsForResource: community.aws.ssm_parameter checks a
+    # parameter's tags as part of its own idempotency comparison before
+    # deciding whether to write — caught on the very next real run after
+    # the DescribeParameters fix below, once that got far enough to reach
+    # this check. Unlike DescribeParameters, this one does support
+    # resource-level scoping (confirmed by AWS's own error naming the
+    # specific parameter ARN, not "*"), so it belongs in this ARN-scoped
+    # statement rather than needing DescribeParameters's separate
+    # Resource: "*" one.
+    control-plane = ["ssm:PutParameter", "ssm:GetParameter", "ssm:ListTagsForResource"]
     worker        = ["ssm:GetParameter"]
   }
 }

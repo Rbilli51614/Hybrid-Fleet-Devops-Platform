@@ -8,15 +8,18 @@ Versioned via git tags (`modules/vm-k8s-asg/vX.Y.Z`) — see [module registry co
 
 A real apply failed outright — `InvalidParameterValue: Invalid security group description` — on a description reading "...control plane <-> workers..."; a second one, on the very next resource, for an apostrophe in "...VPC's NAT gateway...". AWS security group (and security group rule) descriptions only accept `a-zA-Z0-9. _-:/()#,@[]+=&;{}!$*` — no `<`, `>`, or `'`, among others. This is an AWS-side charset restriction, not an HCL type constraint, so `terraform validate` never flags it; only a real `CreateSecurityGroup`/`AuthorizeSecurityGroupIngress` call does. Worth a second look at any resource description written in this repo's usual prose style before assuming it'll apply cleanly.
 
-## `ssm:DescribeParameters` needs its own statement — it doesn't support resource-level permissions at all
+## `community.aws.ssm_parameter` needs more than `PutParameter`/`GetParameter`, discovered one `AccessDeniedException` at a time
 
-`ansible/roles/k8s-control-plane`'s `community.aws.ssm_parameter` task (publishing the kubeadm join command) calls `DescribeParameters` internally before `PutParameter`, and a real Ansible run failed with `AccessDeniedException` even though the control-plane role already had `PutParameter`/`GetParameter` scoped to the exact parameter ARN. `DescribeParameters` isn't like the other two: confirmed against AWS's own IAM action reference, it has no resource-level permission support whatsoever — a policy can only grant it with `Resource: "*"`, never scoped to one parameter. `aws_iam_policy_document.join_token_parameter` handles this with a `dynamic "statement"` adding that separately, `control-plane`-only, rather than trying to fold it into the ARN-scoped statement where it could never actually take effect.
+`ansible/roles/k8s-control-plane`'s `community.aws.ssm_parameter` task (publishing the kubeadm join command) does its own idempotency checking before writing, and that costs more IAM actions than the actual write does — two more were missing, each only surfacing once a real run got far enough to reach it:
+
+- **`ssm:DescribeParameters`** — called first, to check whether the parameter already exists. Confirmed against AWS's own IAM action reference: this action has *no* resource-level permission support whatsoever, so it can only ever be granted with `Resource: "*"` — a statement scoped to the specific parameter ARN could never satisfy it, no matter what's listed in `actions`. `aws_iam_policy_document.join_token_parameter` grants it via a separate `dynamic "statement"`, `control-plane`-only, rather than trying to fold it into the ARN-scoped one.
+- **`ssm:ListTagsForResource`** — called next, to compare the parameter's current tags. Unlike `DescribeParameters`, this one *does* support resource-level scoping (AWS's error named the specific parameter ARN, not `*`), so it's just added to the same ARN-scoped statement as `PutParameter`/`GetParameter`.
 
 ## Example
 
 ```hcl
 module "vm_k8s" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.2"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.3"
 
   name         = "hybrid-fleet-vm-k8s"
   cluster_name = "hybrid-fleet-vm-k8s"
