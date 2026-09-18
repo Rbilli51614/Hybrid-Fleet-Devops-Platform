@@ -16,8 +16,8 @@ dependency "onprem_vpc" {
 
   mock_outputs = {
     vpc_id             = "vpc-00000000000000005"
-    vpc_cidr_block      = "10.1.0.0/16"
-    private_subnet_ids  = ["subnet-00000000000000003", "subnet-00000000000000004"]
+    vpc_cidr_block     = "10.1.0.0/16"
+    private_subnet_ids = ["subnet-00000000000000003", "subnet-00000000000000004"]
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
@@ -33,16 +33,14 @@ dependency "dns" {
 }
 
 terraform {
-  # Local relative path for now; switch to the tagged git source once
-  # modules/nexus-ec2 has a release tag (see terraform/modules/nexus-ec2/README.md).
-  source = "../../../modules/nexus-ec2"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/nexus-ec2?ref=modules/nexus-ec2/v1.0.0"
 }
 
 inputs = {
   name = "hybrid-fleet"
 
-  vpc_id             = dependency.onprem_vpc.outputs.vpc_id
-  private_subnet_id  = dependency.onprem_vpc.outputs.private_subnet_ids[0]
+  vpc_id            = dependency.onprem_vpc.outputs.vpc_id
+  private_subnet_id = dependency.onprem_vpc.outputs.private_subnet_ids[0]
 
   # Both K8s tiers can reach Nexus — the on-prem CIDR directly, the cloud
   # CIDR over the Phase 4 Site-to-Site VPN.
@@ -51,8 +49,8 @@ inputs = {
     dependency.onprem_vpc.outputs.vpc_cidr_block,
   ]
 
-  route53_zone_id  = dependency.dns.outputs.zone_id
-  dns_record_name  = "nexus.${dependency.dns.outputs.zone_name}"
+  route53_zone_id = dependency.dns.outputs.zone_id
+  dns_record_name = "nexus.${dependency.dns.outputs.zone_name}"
 
   tags = {
     Tier = "onprem"

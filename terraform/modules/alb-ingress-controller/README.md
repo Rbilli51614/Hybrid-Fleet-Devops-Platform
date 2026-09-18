@@ -12,7 +12,7 @@ The controller's IAM policy is long, AWS revises it as ALB/NLB features ship, an
 
 ```hcl
 module "alb_ingress_controller" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/alb-ingress-controller?ref=modules/alb-ingress-controller/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/alb-ingress-controller?ref=modules/alb-ingress-controller/v1.0.0"
 
   cluster_name      = module.eks.cluster_name
   vpc_id            = module.cloud_vpc.vpc_id

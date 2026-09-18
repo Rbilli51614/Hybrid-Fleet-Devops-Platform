@@ -30,9 +30,7 @@ dependency "observability" {
 }
 
 terraform {
-  # Local relative path for now; switch to the tagged git source once
-  # modules/vm-k8s-asg has a release tag (see terraform/modules/vm-k8s-asg/README.md).
-  source = "../../../modules/vm-k8s-asg"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.0"
 }
 
 inputs = {

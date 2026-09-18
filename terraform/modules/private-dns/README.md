@@ -8,7 +8,7 @@ Versioned via git tags (`modules/private-dns/vX.Y.Z`) — see [module registry c
 
 ```hcl
 module "private_dns" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/private-dns?ref=modules/private-dns/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/private-dns?ref=modules/private-dns/v1.0.0"
 
   zone_name           = "hybrid-fleet.internal"
   primary_vpc_id      = module.cloud_vpc.vpc_id

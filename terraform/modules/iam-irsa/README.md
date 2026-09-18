@@ -8,7 +8,7 @@ Versioned via git tags (`modules/iam-irsa/vX.Y.Z`) — see [module registry conv
 
 ```hcl
 module "karpenter_irsa" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/iam-irsa?ref=modules/iam-irsa/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/iam-irsa?ref=modules/iam-irsa/v1.0.0"
 
   role_name             = "karpenter-controller"
   oidc_provider_arn     = module.eks.oidc_provider_arn

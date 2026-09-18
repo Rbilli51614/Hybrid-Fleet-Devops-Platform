@@ -77,13 +77,21 @@ IAM: IRSA for EKS workloads; SSM-based (no SSH) role for VM tier
 
 ## Module registry convention
 
-The brief calls for an S3-backed private module registry. This repo implements the same versioning discipline with a lower-overhead mechanism: modules under `terraform/modules/` are referenced from `terraform/live/**` via git source refs pinned to semantic-version tags, e.g.:
+The brief calls for an S3-backed private module registry. This repo implements the same versioning discipline with a lower-overhead mechanism: every module under `terraform/modules/` is git-tagged `modules/<name>/vX.Y.Z`, and every stack under `terraform/live/**` consumes it through that tag, not a local relative path:
 
 ```hcl
-source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpc?ref=modules/vpc/v1.0.0"
+source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpc?ref=modules/vpc/v1.0.0"
 ```
 
-Tags follow `modules/<module-name>/vX.Y.Z`. This gives every consumer (both K8s tiers' IaC) the same version-pinning and breaking-change discipline a hosted private registry would, without a paid dependency. See [`decision-stack.md`](decision-stack.md) for the tradeoff discussion.
+This isn't just documented convention — `terraform/live/dev/cloud-vpc` and `terraform/live/dev/onprem-vpc` both pull `modules/vpc/v1.0.0` this exact way, which is the module-registry story's real payoff: two consumers, two tiers, one versioned source neither forked to get there. Before wiring every stack to it, the fetch mechanism itself (git tag + `//subdirectory`, plus a module's own relative reference to a *sibling* module like `karpenter`'s `source = "../iam-irsa"`) was verified against a real `git init`/tag/fetch round-trip, not assumed from the syntax alone.
+
+Tags give every consumer the same version-pinning and breaking-change discipline a hosted private registry would, without a paid dependency — see [`decision-stack.md`](decision-stack.md) for the tradeoff discussion, and [`pitfalls.md`](pitfalls.md) for when a git-tag convention stops being enough (many teams, needs enforced deprecation policy) and a real private registry becomes the right move.
+
+### The `_envcommon` pattern
+
+Five stacks — `karpenter`, `arc`, `alb-ingress-controller`, `opa-gatekeeper`, `otel-collector` — each need to be their own Terragrunt unit purely so their `helm` provider can authenticate against an EKS cluster that already exists (see below), which means each one used to carry an identical, copy-pasted `dependency "eks"` block and `generate "helm_provider"` block. That duplication now lives once, in [`terraform/_envcommon/eks-controller.hcl`](../terraform/_envcommon/eks-controller.hcl), included by each of the five stacks alongside `root.hcl`.
+
+Worth being precise about what this is and isn't: Terragrunt's `_envcommon` pattern is usually demonstrated solving cross-*environment* duplication (the same component's config repeated across `dev`/`staging`/`prod`). This repo has exactly one environment, so that's not the duplication being solved here — it's cross-*controller* duplication instead. Same mechanism (a shared, included `.hcl` fragment), a different axis of repetition. Calling it "the `_envcommon` pattern" because it solves that textbook problem, when what's actually being deduplicated here is something else, would be the kind of imprecision worth catching rather than repeating.
 
 ## Why EKS and Karpenter are separate Terragrunt stacks
 

@@ -14,7 +14,7 @@ Everything else in this repo's VM tier (`vm-k8s-asg`) treats instances as dispos
 
 ```hcl
 module "nexus" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/nexus-ec2?ref=modules/nexus-ec2/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/nexus-ec2?ref=modules/nexus-ec2/v1.0.0"
 
   name               = "hybrid-fleet"
   vpc_id             = module.onprem_vpc.vpc_id

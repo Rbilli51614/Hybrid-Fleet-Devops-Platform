@@ -10,8 +10,9 @@ Full design rationale, the six-layer decision stack, and failure-mode pitfalls l
 
 ```
 terraform/
-  modules/          # Shared, versioned Terraform modules (the "private registry")
-  live/              # Terragrunt live environments that consume the modules
+  modules/          # Shared, git-tag-versioned Terraform modules (the "private registry") — see docs/architecture.md
+  _envcommon/       # Shared Terragrunt config fragments (currently: the EKS-controller helm-provider pattern)
+  live/              # Terragrunt live environments that consume the modules, by tag
     global/          # Account-level bootstrap (Terraform state backend)
     dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, ALB Ingress, OPA/Gatekeeper, OTel Collector, on-prem VPC, VM-tier K8s, VPN, DNS, Nexus, observability)
 ansible/             # Config management for the VM tier: kubeadm bootstrap, Gatekeeper, OTel Collector, Nexus (all over SSM, no SSH)
@@ -33,7 +34,7 @@ This is being built in phases, each independently demonstrable:
 - [x] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, GitHub App credentials in Secrets Manager, optional runner-pod IRSA, ephemeral autoscaled runner pods on a Spot-first CI-only Karpenter NodePool.
 - [x] **Phase 3 — VM tier.** "On-prem" VPC, persistent EC2 ASGs (control-plane + worker node groups), SSM-only IAM (no SSH), kubeadm bootstrap + Calico CNI via Ansible over the SSM connection plugin.
 - [x] **Phase 4 — Hybrid networking.** Real Site-to-Site VPN (VGW + self-managed strongSwan customer gateway, configured via Ansible over SSM) linking the cloud and on-prem VPCs, a Route 53 private hosted zone associated with both, and the AWS Load Balancer Controller for ALB Ingress on EKS.
-- [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
+- [x] **Phase 5 — Shared module registry discipline.** All 13 modules git-tagged `modules/<name>/v1.0.0`; every live stack (both tiers) consumes its module through that tag, not a local path — `cloud-vpc` and `onprem-vpc` both pull the identical `modules/vpc/v1.0.0`. The five EKS-controller stacks' duplicated `helm` provider boilerplate now lives once, in a Terragrunt `_envcommon` include.
 - [x] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), standalone EBS data volume that outlives instance replacement, S3 lifecycle-managed daily backups, and a full [restore runbook](docs/runbooks/nexus-backup-restore.md).
 - [x] **Phase 7 — Policy parity.** OPA/Gatekeeper controller on both clusters (Terraform+Helm on EKS, Ansible+Helm on the VM tier — same chart version/config, different invocation), with the same `ConstraintTemplate`/`Constraint` YAML `kubectl`-applied identically to both.
 - [x] **Phase 8 — Federated observability.** Amazon Managed Prometheus (+ its managed Alertmanager) and Amazon Managed Grafana, an OpenTelemetry Collector on both tiers sharing one literal pipeline-config file, and CloudWatch alarms (EC2 status checks, VPN tunnel state) routed to PagerDuty/OpsGenie via SNS in parallel to Prometheus-evaluated alerts.

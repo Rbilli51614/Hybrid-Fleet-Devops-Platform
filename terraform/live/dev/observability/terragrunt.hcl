@@ -6,9 +6,9 @@ dependency "vpn" {
   config_path = "../vpn"
 
   mock_outputs = {
-    vpn_connection_id   = "vpn-00000000000000000"
-    tunnel1_address     = "203.0.113.1"
-    tunnel2_address     = "203.0.113.2"
+    vpn_connection_id = "vpn-00000000000000000"
+    tunnel1_address   = "203.0.113.1"
+    tunnel2_address   = "203.0.113.2"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
@@ -23,9 +23,7 @@ dependency "nexus" {
 }
 
 terraform {
-  # Local relative path for now; switch to the tagged git source once
-  # modules/observability has a release tag (see its README.md).
-  source = "../../../modules/observability"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.0"
 }
 
 inputs = {

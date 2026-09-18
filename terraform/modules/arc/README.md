@@ -29,7 +29,7 @@ Depends on outputs from [`eks-cluster`](../eks-cluster/) and calls [`iam-irsa`](
 
 ```hcl
 module "arc" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/arc?ref=modules/arc/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/arc?ref=modules/arc/v1.0.0"
 
   cluster_name      = module.eks.cluster_name
   oidc_provider_arn = module.eks.oidc_provider_arn

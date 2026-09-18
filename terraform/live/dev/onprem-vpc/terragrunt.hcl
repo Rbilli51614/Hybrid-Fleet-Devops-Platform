@@ -3,9 +3,7 @@ include "root" {
 }
 
 terraform {
-  # Local relative path for now; switch to the tagged git source once
-  # modules/vpc has a release tag (see terraform/modules/vpc/README.md).
-  source = "../../../modules/vpc"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpc?ref=modules/vpc/v1.0.0"
 }
 
 inputs = {

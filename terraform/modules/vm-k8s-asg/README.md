@@ -8,7 +8,7 @@ Versioned via git tags (`modules/vm-k8s-asg/vX.Y.Z`) — see [module registry co
 
 ```hcl
 module "vm_k8s" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vm-k8s-asg?ref=modules/vm-k8s-asg/v1.0.0"
 
   name         = "hybrid-fleet-vm-k8s"
   cluster_name = "hybrid-fleet-vm-k8s"

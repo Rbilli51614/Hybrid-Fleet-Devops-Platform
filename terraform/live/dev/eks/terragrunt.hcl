@@ -15,9 +15,7 @@ dependency "cloud_vpc" {
 }
 
 terraform {
-  # Local relative path for now; switch to the tagged git source once
-  # modules/eks-cluster has a release tag (see terraform/modules/eks-cluster/README.md).
-  source = "../../../modules/eks-cluster"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.0"
 }
 
 inputs = {

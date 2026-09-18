@@ -8,7 +8,7 @@ Versioned via git tags (`modules/eks-cluster/vX.Y.Z`) — see [module registry c
 
 ```hcl
 module "eks" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/eks-cluster?ref=modules/eks-cluster/v1.0.0"
 
   cluster_name       = "hybrid-fleet-eks"
   kubernetes_version = "1.30"

@@ -10,7 +10,7 @@ The only module in this repo with zero AWS resources — Gatekeeper is a pure in
 
 ```hcl
 module "gatekeeper" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/opa-gatekeeper?ref=modules/opa-gatekeeper/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/opa-gatekeeper?ref=modules/opa-gatekeeper/v1.0.0"
 }
 ```
 

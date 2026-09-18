@@ -21,7 +21,7 @@ The security group rules scoping IKE (UDP 500) and NAT-T (UDP 4500) inbound to A
 
 ```hcl
 module "vpn" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpn?ref=modules/vpn/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpn?ref=modules/vpn/v1.0.0"
 
   name    = "hybrid-fleet"
   cloud_vpc_id                  = module.cloud_vpc.vpc_id

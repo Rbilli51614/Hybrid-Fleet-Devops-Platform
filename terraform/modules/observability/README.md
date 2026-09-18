@@ -21,7 +21,7 @@ Both converge on the same destination; neither goes through the other. Worth kno
 
 ```hcl
 module "observability" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.0"
 
   name = "hybrid-fleet"
 

@@ -8,7 +8,7 @@ Versioned via git tags (`modules/vpc/vX.Y.Z`) and consumed by both the cloud-tie
 
 ```hcl
 module "cloud_vpc" {
-  source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpc?ref=modules/vpc/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/vpc?ref=modules/vpc/v1.0.0"
 
   name                  = "hybrid-fleet-cloud"
   cidr_block            = "10.0.0.0/16"
