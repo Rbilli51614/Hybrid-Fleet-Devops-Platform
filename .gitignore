@@ -1,0 +1,38 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!example.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terragrunt-cache/
+
+# Ansible
+*.retry
+inventories/*/host_vars/*secret*
+inventories/*/group_vars/*secret*
+
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.key
+!ansible/**/*.key.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Kubeconfig
+kubeconfig*
+*.kubeconfig
