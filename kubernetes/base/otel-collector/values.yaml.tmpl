@@ -1,0 +1,47 @@
+# Canonical OpenTelemetry Collector pipeline — the SAME shape installed on
+# both tiers: terraform/modules/otel-collector (EKS, via Terraform's helm
+# provider) renders this with templatefile(), and ansible/roles/
+# otel-collector (VM tier, via kubernetes.core.helm over SSM) renders the
+# same two placeholders through Jinja instead. Same receivers/processors/
+# exporters/pipeline on both — only the two substituted values differ
+# per environment. See docs/architecture.md.
+#
+# Placeholders (Terraform templatefile() / Ansible Jinja both use this
+# exact spelling — do not rename without updating both):
+#   ${amp_remote_write_url}   — terraform/modules/observability's amp_remote_write_url output
+#   ${aws_region}             — the region the AMP workspace lives in
+
+mode: deployment
+
+config:
+  receivers:
+    hostmetrics:
+      collection_interval: 60s
+      scrapers:
+        cpu: {}
+        memory: {}
+        disk: {}
+        network: {}
+        filesystem: {}
+
+  processors:
+    batch: {}
+
+  exporters:
+    prometheusremotewrite:
+      endpoint: "${amp_remote_write_url}"
+      auth:
+        authenticator: sigv4auth
+
+  extensions:
+    sigv4auth:
+      region: "${aws_region}"
+      service: "aps"
+
+  service:
+    extensions: [sigv4auth]
+    pipelines:
+      metrics:
+        receivers: [hostmetrics]
+        processors: [batch]
+        exporters: [prometheusremotewrite]

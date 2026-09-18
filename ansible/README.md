@@ -17,6 +17,7 @@ playbooks/
   configure-vpn-gateway.yml     # configures strongSwan on the on-prem VPN gateway instance
   configure-nexus.yml           # installs Nexus, mounts its data volume, sets up the S3 backup timer
   configure-policy.yml          # installs the Gatekeeper controller on the VM-tier cluster
+  configure-observability.yml   # installs the OpenTelemetry Collector on the VM-tier cluster
 roles/
   k8s-common/                   # swap off, kernel modules/sysctl, containerd, pinned kubeadm/kubelet/kubectl
   k8s-control-plane/            # kubeadm init, Calico CNI, publishes the join command to SSM Parameter Store
@@ -24,6 +25,7 @@ roles/
   vpn-gateway/                  # reads the negotiated tunnel config from SSM, renders + brings up strongSwan
   nexus/                        # Java + Nexus install, data-volume mount, systemd unit, daily S3 backup timer
   opa-gatekeeper/               # installs Helm (if missing) + the Gatekeeper chart, same version as the EKS side
+  otel-collector/               # installs the same OTel Collector chart/pipeline as the EKS side, auth via IMDS
 ```
 
 ## Run
@@ -78,5 +80,17 @@ ansible-playbook playbooks/configure-policy.yml
 ```
 
 Installs only the Gatekeeper controller, at the same chart version/config as [`terraform/modules/opa-gatekeeper`](../terraform/modules/opa-gatekeeper/) installs on EKS. The actual policy content is applied separately, identically to both clusters — see [`kubernetes/base/opa-gatekeeper/README.md`](../kubernetes/base/opa-gatekeeper/README.md).
+
+### Federated observability (OpenTelemetry Collector)
+
+After `terraform/live/dev/observability` has applied and `playbooks/bootstrap-k8s.yml` has run:
+
+```bash
+cd terraform/live/dev/observability
+ansible-playbook ../../../../ansible/playbooks/configure-observability.yml \
+  -e "amp_remote_write_url=$(terragrunt output -raw amp_remote_write_url)"
+```
+
+Renders the exact same pipeline config as [`terraform/modules/otel-collector`](../terraform/modules/otel-collector/) installs on EKS — see [`kubernetes/base/otel-collector/README.md`](../kubernetes/base/otel-collector/README.md) for how "the same file, two render mechanisms" actually holds. Authenticates to Amazon Managed Prometheus as this instance's own IAM role via IMDS — requires `terraform/live/dev/vm-k8s` to have been re-applied after `../observability` exists, so its `amp_workspace_arn` grant is in place (see `terraform/modules/vm-k8s-asg/README.md`).
 
 Validated in this repo with `ansible-playbook --syntax-check`, and every role's Jinja templates test-rendered offline with representative variables (no live AWS connectivity needed for either) — real execution needs the relevant Terraform stack actually provisioned and, for the VM tier, an `ANSIBLE_SSM_BUCKET`.

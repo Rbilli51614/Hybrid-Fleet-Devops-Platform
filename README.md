@@ -13,8 +13,8 @@ terraform/
   modules/          # Shared, versioned Terraform modules (the "private registry")
   live/              # Terragrunt live environments that consume the modules
     global/          # Account-level bootstrap (Terraform state backend)
-    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, ALB Ingress, on-prem VPC, VM-tier K8s, VPN, DNS, Nexus, observability)
-ansible/             # Config management for the VM tier: kubeadm bootstrap (over SSM, no SSH), Nexus setup
+    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, ARC, ALB Ingress, OPA/Gatekeeper, OTel Collector, on-prem VPC, VM-tier K8s, VPN, DNS, Nexus, observability)
+ansible/             # Config management for the VM tier: kubeadm bootstrap, Gatekeeper, OTel Collector, Nexus (all over SSM, no SSH)
 kubernetes/
   base/              # Manifests applied identically to BOTH clusters (OPA/Gatekeeper, OTel Collector)
   eks/               # EKS-only workloads (ARC runner controller, Karpenter NodePools, example ALB Ingress)
@@ -36,7 +36,7 @@ This is being built in phases, each independently demonstrable:
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
 - [x] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), standalone EBS data volume that outlives instance replacement, S3 lifecycle-managed daily backups, and a full [restore runbook](docs/runbooks/nexus-backup-restore.md).
 - [x] **Phase 7 — Policy parity.** OPA/Gatekeeper controller on both clusters (Terraform+Helm on EKS, Ansible+Helm on the VM tier — same chart version/config, different invocation), with the same `ConstraintTemplate`/`Constraint` YAML `kubectl`-applied identically to both.
-- [ ] **Phase 8 — Federated observability.** Amazon Managed Prometheus + Grafana, OpenTelemetry Collector on both tiers, CloudWatch, Alertmanager → PagerDuty/OpsGenie.
+- [x] **Phase 8 — Federated observability.** Amazon Managed Prometheus (+ its managed Alertmanager) and Amazon Managed Grafana, an OpenTelemetry Collector on both tiers sharing one literal pipeline-config file, and CloudWatch alarms (EC2 status checks, VPN tunnel state) routed to PagerDuty/OpsGenie via SNS in parallel to Prometheus-evaluated alerts.
 - [ ] **Phase 9 — Runbooks & on-call discipline.** Versioned in-repo runbooks, cost allocation tags per team.
 
 ## Getting Started
@@ -56,6 +56,8 @@ cd ../karpenter                  && terragrunt init && terragrunt apply
 cd ../arc                        && terragrunt init && terragrunt apply
 
 cd ../opa-gatekeeper              && terragrunt init && terragrunt apply
+cd ../observability               && terragrunt init && terragrunt apply
+cd ../otel-collector               && terragrunt init && terragrunt apply
 
 # 3. Apply the kubectl-managed cluster-native resources (Karpenter
 #    NodePools/EC2NodeClass, the OPA/Gatekeeper policy content, and —
@@ -65,13 +67,18 @@ aws eks update-kubeconfig --name hybrid-fleet-eks --region us-east-1
 kubectl apply -f kubernetes/eks/karpenter/
 kubectl apply -f kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/
 
-# 4. Deploy the VM tier, then bootstrap kubeadm + Gatekeeper on it over
-#    SSM (no SSH) — see ansible/README.md for the full Ansible wiring steps
+# 4. Deploy the VM tier, then bootstrap kubeadm + Gatekeeper + the OTel
+#    Collector on it over SSM (no SSH) — see ansible/README.md for the
+#    full Ansible wiring steps. vm-k8s depends on ../observability (for
+#    its AMP remote-write IAM grant) even though that stack is applied
+#    later in this list — Terragrunt orders by the dependency graph, not
+#    by this list's order, so re-apply vm-k8s once ../observability exists.
 cd ../../onprem-vpc && terragrunt init && terragrunt apply
 cd ../vm-k8s         && terragrunt init && terragrunt apply
-# (ansible-playbook playbooks/bootstrap-k8s.yml && playbooks/configure-policy.yml,
-#  then kubectl apply -f kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/
-#  against the VM-tier kubeconfig too, to actually complete policy parity)
+# (ansible-playbook playbooks/bootstrap-k8s.yml && playbooks/configure-policy.yml
+#  && playbooks/configure-observability.yml, then kubectl apply -f
+#  kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/ against
+#  the VM-tier kubeconfig too, to actually complete policy parity)
 
 # 5. Hybrid networking: DNS, ALB Ingress, and the Site-to-Site VPN linking
 #    the two VPCs (then configure strongSwan — see ansible/README.md)

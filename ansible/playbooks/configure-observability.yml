@@ -1,0 +1,14 @@
+---
+# Installs the OpenTelemetry Collector on the VM-tier cluster — the same
+# chart version/pipeline terraform/modules/otel-collector installs on EKS.
+# Run after playbooks/bootstrap-k8s.yml (needs the control-plane's
+# kubeconfig already in place).
+#
+#   ansible-playbook playbooks/configure-observability.yml \
+#     -e "amp_remote_write_url=$(cd ../terraform/live/dev/observability && terragrunt output -raw amp_remote_write_url)"
+
+- name: Install federated observability (OpenTelemetry Collector)
+  hosts: control_plane
+  become: true
+  roles:
+    - otel-collector

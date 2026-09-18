@@ -43,6 +43,7 @@ module "vm_k8s" {
 | `ami_ssm_parameter` | SSM path resolving to the AMI to launch | `string` | latest Ubuntu 22.04 LTS |
 | `node_groups` | Map of node group name → `{role, instance_type, desired_size, min_size, max_size, root_volume_size_gb?}` | `map(object(...))` | — |
 | `join_token_ssm_path` | SSM Parameter Store path for the kubeadm join command exchange | `string` | `"/<cluster_name>/join-command"` |
+| `amp_workspace_arn` | If set, grants every node `aps:RemoteWrite` on this Amazon Managed Prometheus workspace — see [`ansible/roles/otel-collector`](../../../ansible/roles/otel-collector/) | `string` | `null` |
 | `tags` | Extra tags applied to all resources | `map(string)` | `{}` |
 
 | Output | Description |

@@ -180,6 +180,26 @@ resource "aws_iam_instance_profile" "node" {
   role = aws_iam_role.node[each.key].name
 }
 
+# Optional: lets ansible/roles/otel-collector's prometheusremotewrite
+# exporter authenticate as the node's own IAM role via IMDS — see
+# docs/architecture.md on why this tier can't use IRSA like the EKS side.
+data "aws_iam_policy_document" "amp_remote_write" {
+  count = var.amp_workspace_arn != null ? 1 : 0
+
+  statement {
+    actions   = ["aps:RemoteWrite"]
+    resources = [var.amp_workspace_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "amp_remote_write" {
+  for_each = var.amp_workspace_arn != null ? var.node_groups : {}
+
+  name   = "${var.name}-${each.key}-amp-remote-write"
+  role   = aws_iam_role.node[each.key].id
+  policy = data.aws_iam_policy_document.amp_remote_write[0].json
+}
+
 # ---------------------------------------------------------------------------
 # Launch templates + Auto Scaling Groups
 #

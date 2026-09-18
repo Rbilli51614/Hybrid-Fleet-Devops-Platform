@@ -1,0 +1,63 @@
+---
+# Installs the same OpenTelemetry Collector chart version/pipeline as
+# terraform/modules/otel-collector installs on EKS, via kubernetes.core.helm
+# against this cluster's own kubeconfig. Run on the control-plane host,
+# after k8s-control-plane (which sets up kubeconfig_path) — same pattern as
+# opa-gatekeeper.
+#
+# Authenticates to AMP as this instance's own IAM role via IMDS (no OIDC
+# provider on this tier to attach IRSA to) — granted by
+# terraform/modules/vm-k8s-asg's amp_workspace_arn input. The
+# prometheusremotewrite exporter's sigv4auth extension picks this up the
+# same way any AWS SDK client on the instance would.
+
+- name: Determine target CPU architecture for the Helm binary
+  ansible.builtin.set_fact:
+    helm_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+- name: Check whether Helm is already installed
+  ansible.builtin.command: helm version --short
+  register: helm_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download and install the Helm binary
+  when: helm_installed.rc != 0
+  block:
+    - name: Download the Helm release tarball
+      ansible.builtin.unarchive:
+        src: "https://get.helm.sh/helm-v{{ helm_version }}-linux-{{ helm_arch }}.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install the helm binary
+      ansible.builtin.copy:
+        src: "/tmp/linux-{{ helm_arch }}/helm"
+        dest: /usr/local/bin/helm
+        mode: "0755"
+        remote_src: true
+
+# The shared config uses Terraform templatefile() ${var} placeholders, not
+# Jinja — deliberately the same literal file terraform/modules/otel-
+# collector renders, not a separate near-duplicate .j2 copy that could
+# drift from it. Plain string substitution reproduces the same result.
+- name: Render the shared OTel Collector pipeline config
+  ansible.builtin.copy:
+    content: >-
+      {{ lookup('file', role_path + '/../../../kubernetes/base/otel-collector/values.yaml.tmpl')
+         | replace('${amp_remote_write_url}', amp_remote_write_url)
+         | replace('${aws_region}', aws_region) }}
+    dest: /tmp/otel-collector-values.yaml
+    mode: "0600"
+
+- name: Install the OpenTelemetry Collector
+  kubernetes.core.helm:
+    name: otel-collector
+    chart_ref: opentelemetry-collector
+    chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart_version: "{{ otel_collector_helm_version }}"
+    release_namespace: "{{ otel_collector_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig_path }}"
+    values_files:
+      - /tmp/otel-collector-values.yaml

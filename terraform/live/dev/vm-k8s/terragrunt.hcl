@@ -14,6 +14,21 @@ dependency "onprem_vpc" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
 
+# Phase 8 (observability) added this dependency after this stack already
+# existed — expected and fine: Terragrunt orders by the dependency graph,
+# not by phase number, so `terragrunt run-all apply` still sequences this
+# correctly even though observability's own directory number is higher.
+# On an already-applied cluster, just re-apply this stack once
+# ../observability exists to pick up the new grant.
+dependency "observability" {
+  config_path = "../observability"
+
+  mock_outputs = {
+    amp_workspace_arn = "arn:aws:aps:us-east-1:000000000000:workspace/ws-00000000-0000-0000-0000-000000000000"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
+}
+
 terraform {
   # Local relative path for now; switch to the tagged git source once
   # modules/vm-k8s-asg has a release tag (see terraform/modules/vm-k8s-asg/README.md).
@@ -26,6 +41,8 @@ inputs = {
 
   vpc_id     = dependency.onprem_vpc.outputs.vpc_id
   subnet_ids = dependency.onprem_vpc.outputs.private_subnet_ids
+
+  amp_workspace_arn = dependency.observability.outputs.amp_workspace_arn
 
   # Single control-plane node: no HA/load-balanced control plane here — see
   # terraform/modules/vm-k8s-asg/README.md for why that's an accepted

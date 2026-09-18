@@ -23,6 +23,16 @@ output "tunnel_parameter_path" {
   value       = var.tunnel_parameter_path
 }
 
+output "tunnel1_address" {
+  description = "AWS-side outside IP address for tunnel 1. Used by terraform/modules/observability for a CloudWatch TunnelState alarm."
+  value       = aws_vpn_connection.this.tunnel1_address
+}
+
+output "tunnel2_address" {
+  description = "AWS-side outside IP address for tunnel 2. Used by terraform/modules/observability for a CloudWatch TunnelState alarm."
+  value       = aws_vpn_connection.this.tunnel2_address
+}
+
 output "customer_gateway_configuration" {
   description = <<-EOT
     AWS-generated configuration XML for this specific VPN connection —

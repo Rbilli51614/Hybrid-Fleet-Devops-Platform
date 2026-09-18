@@ -1,0 +1,17 @@
+---
+# Must match terraform/modules/otel-collector's otel_collector_helm_version
+# default — same reasoning as opa-gatekeeper's version cross-reference.
+otel_collector_helm_version: "0.108.0"
+otel_collector_namespace: otel-collector-system
+
+# Must be set from terraform/live/dev/observability outputs — no safe
+# default, deliberately left unset so a run without -e fails loudly
+# instead of remote_write-ing to the wrong endpoint.
+amp_remote_write_url: ""
+aws_region: "us-east-1"
+
+kubeconfig_path: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+
+# Helm CLI itself — reuses opa-gatekeeper's install-if-missing logic; if
+# that role already ran on this host, this is a no-op.
+helm_version: "3.16.2"

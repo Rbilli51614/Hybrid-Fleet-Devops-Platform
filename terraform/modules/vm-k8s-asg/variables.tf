@@ -45,6 +45,12 @@ variable "join_token_ssm_path" {
   default     = null
 }
 
+variable "amp_workspace_arn" {
+  description = "Amazon Managed Prometheus workspace ARN (from terraform/modules/observability's amp_workspace_arn output). If set, every node role is granted aps:RemoteWrite scoped to it — the VM-tier ansible/roles/otel-collector authenticates as the node's own IAM role via IMDS, since this tier has no OIDC provider to attach IRSA to. Null skips the grant entirely."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)

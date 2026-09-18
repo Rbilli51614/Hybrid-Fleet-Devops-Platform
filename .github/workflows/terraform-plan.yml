@@ -61,6 +61,8 @@ jobs:
           - terraform/live/dev/vpn
           - terraform/live/dev/nexus
           - terraform/live/dev/opa-gatekeeper
+          - terraform/live/dev/observability
+          - terraform/live/dev/otel-collector
     steps:
       - uses: actions/checkout@v4
 
