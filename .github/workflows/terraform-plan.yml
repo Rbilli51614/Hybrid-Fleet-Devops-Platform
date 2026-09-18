@@ -60,6 +60,7 @@ jobs:
           - terraform/live/dev/dns
           - terraform/live/dev/vpn
           - terraform/live/dev/nexus
+          - terraform/live/dev/opa-gatekeeper
     steps:
       - uses: actions/checkout@v4
 

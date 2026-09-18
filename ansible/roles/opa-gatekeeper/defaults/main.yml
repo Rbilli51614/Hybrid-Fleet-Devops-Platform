@@ -1,0 +1,16 @@
+---
+# Must match terraform/modules/opa-gatekeeper's gatekeeper_helm_version
+# default — the whole point of installing Gatekeeper on this tier via a
+# different mechanism (Ansible+helm here, Terraform+helm_release on EKS)
+# is that the *result* is identical, not the invocation. See
+# docs/architecture.md.
+gatekeeper_helm_version: "3.17.1"
+gatekeeper_namespace: gatekeeper-system
+gatekeeper_replicas: 1 # single control-plane node on this tier — see terraform/modules/vm-k8s-asg
+gatekeeper_audit_interval_seconds: 60
+
+kubeconfig_path: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+
+# Helm CLI itself (not the Gatekeeper chart) — kubernetes.core.helm shells
+# out to a real helm binary, which this role installs if missing.
+helm_version: "3.16.2"

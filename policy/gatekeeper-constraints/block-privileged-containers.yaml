@@ -1,0 +1,15 @@
+# Applied identically to both clusters — see ../../kubernetes/base/opa-gatekeeper/README.md.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockPrivileged
+metadata:
+  name: block-privileged-containers
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces:
+      - kube-system
+      - kube-node-lease
+      - kube-public
+      - gatekeeper-system

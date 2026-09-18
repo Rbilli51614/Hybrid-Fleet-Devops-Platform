@@ -16,12 +16,14 @@ playbooks/
   bootstrap-k8s.yml             # site playbook: common prereqs -> control-plane init -> worker join
   configure-vpn-gateway.yml     # configures strongSwan on the on-prem VPN gateway instance
   configure-nexus.yml           # installs Nexus, mounts its data volume, sets up the S3 backup timer
+  configure-policy.yml          # installs the Gatekeeper controller on the VM-tier cluster
 roles/
   k8s-common/                   # swap off, kernel modules/sysctl, containerd, pinned kubeadm/kubelet/kubectl
   k8s-control-plane/            # kubeadm init, Calico CNI, publishes the join command to SSM Parameter Store
   k8s-worker/                   # waits for and consumes that join command, kubeadm join
   vpn-gateway/                  # reads the negotiated tunnel config from SSM, renders + brings up strongSwan
   nexus/                        # Java + Nexus install, data-volume mount, systemd unit, daily S3 backup timer
+  opa-gatekeeper/               # installs Helm (if missing) + the Gatekeeper chart, same version as the EKS side
 ```
 
 ## Run
@@ -66,5 +68,15 @@ ansible-playbook ../../../../ansible/playbooks/configure-nexus.yml \
 ```
 
 Full operational procedure — how the backup timer works, and how to restore — in [`docs/runbooks/nexus-backup-restore.md`](../docs/runbooks/nexus-backup-restore.md).
+
+### Policy parity (Gatekeeper)
+
+After `playbooks/bootstrap-k8s.yml` has run (needs the control-plane's kubeconfig):
+
+```bash
+ansible-playbook playbooks/configure-policy.yml
+```
+
+Installs only the Gatekeeper controller, at the same chart version/config as [`terraform/modules/opa-gatekeeper`](../terraform/modules/opa-gatekeeper/) installs on EKS. The actual policy content is applied separately, identically to both clusters — see [`kubernetes/base/opa-gatekeeper/README.md`](../kubernetes/base/opa-gatekeeper/README.md).
 
 Validated in this repo with `ansible-playbook --syntax-check`, and every role's Jinja templates test-rendered offline with representative variables (no live AWS connectivity needed for either) — real execution needs the relevant Terraform stack actually provisioned and, for the VM tier, an `ANSIBLE_SSM_BUCKET`.

@@ -1,0 +1,20 @@
+---
+# Installs the Gatekeeper controller on the VM-tier cluster — the same
+# chart version/config terraform/modules/opa-gatekeeper installs on EKS,
+# via a different mechanism (helm CLI over SSM here, Terraform's helm
+# provider there) but an identical result. Run after playbooks/
+# bootstrap-k8s.yml (needs the control-plane's kubeconfig already in
+# place).
+#
+#   ansible-playbook playbooks/configure-policy.yml
+#
+# The actual policy content — ConstraintTemplates and Constraints — is
+# NOT applied by this playbook; it's kubectl-applied identically to both
+# clusters from kubernetes/base/opa-gatekeeper/ and
+# policy/gatekeeper-constraints/. See those directories' READMEs.
+
+- name: Install policy parity (Gatekeeper controller)
+  hosts: control_plane
+  become: true
+  roles:
+    - opa-gatekeeper

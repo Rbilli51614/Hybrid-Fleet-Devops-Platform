@@ -1,0 +1,46 @@
+---
+# Installs the identical Gatekeeper controller version/config as
+# terraform/modules/opa-gatekeeper installs on EKS, via kubernetes.core.helm
+# against this cluster's own kubeconfig instead of Terraform's helm
+# provider. Run on the control-plane host, after k8s-control-plane (which
+# sets up kubeconfig_path).
+
+- name: Determine target CPU architecture for the Helm binary
+  ansible.builtin.set_fact:
+    helm_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+- name: Check whether Helm is already installed
+  ansible.builtin.command: helm version --short
+  register: helm_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download and install the Helm binary
+  when: helm_installed.rc != 0
+  block:
+    - name: Download the Helm release tarball
+      ansible.builtin.unarchive:
+        src: "https://get.helm.sh/helm-v{{ helm_version }}-linux-{{ helm_arch }}.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install the helm binary
+      ansible.builtin.copy:
+        src: "/tmp/linux-{{ helm_arch }}/helm"
+        dest: /usr/local/bin/helm
+        mode: "0755"
+        remote_src: true
+
+- name: Install Gatekeeper
+  kubernetes.core.helm:
+    name: gatekeeper
+    chart_ref: gatekeeper
+    chart_repo_url: https://open-policy-agent.github.io/gatekeeper/charts
+    chart_version: "{{ gatekeeper_helm_version }}"
+    release_namespace: "{{ gatekeeper_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig_path }}"
+    release_values:
+      replicas: "{{ gatekeeper_replicas }}"
+      audit:
+        auditInterval: "{{ gatekeeper_audit_interval_seconds }}"

@@ -1,0 +1,22 @@
+# Applied identically to both clusters — see ../../kubernetes/base/opa-gatekeeper/README.md.
+# Ties directly to docs/decision-stack.md's Cost layer: per-team tags map
+# to per-team cost visibility, which needs the label to exist in the first
+# place.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: require-team-label
+spec:
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+    excludedNamespaces:
+      - kube-system
+      - kube-node-lease
+      - kube-public
+      - gatekeeper-system
+  parameters:
+    message: "Every Deployment must carry a 'team' label for cost allocation — see docs/decision-stack.md's Cost layer."
+    labels:
+      - key: team

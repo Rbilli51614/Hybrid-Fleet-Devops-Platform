@@ -35,7 +35,7 @@ This is being built in phases, each independently demonstrable:
 - [x] **Phase 4 — Hybrid networking.** Real Site-to-Site VPN (VGW + self-managed strongSwan customer gateway, configured via Ansible over SSM) linking the cloud and on-prem VPCs, a Route 53 private hosted zone associated with both, and the AWS Load Balancer Controller for ALB Ingress on EKS.
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
 - [x] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), standalone EBS data volume that outlives instance replacement, S3 lifecycle-managed daily backups, and a full [restore runbook](docs/runbooks/nexus-backup-restore.md).
-- [ ] **Phase 7 — Policy parity.** OPA/Gatekeeper deployed identically on both clusters.
+- [x] **Phase 7 — Policy parity.** OPA/Gatekeeper controller on both clusters (Terraform+Helm on EKS, Ansible+Helm on the VM tier — same chart version/config, different invocation), with the same `ConstraintTemplate`/`Constraint` YAML `kubectl`-applied identically to both.
 - [ ] **Phase 8 — Federated observability.** Amazon Managed Prometheus + Grafana, OpenTelemetry Collector on both tiers, CloudWatch, Alertmanager → PagerDuty/OpsGenie.
 - [ ] **Phase 9 — Runbooks & on-call discipline.** Versioned in-repo runbooks, cost allocation tags per team.
 
@@ -55,16 +55,23 @@ cd ../eks                        && terragrunt init && terragrunt apply
 cd ../karpenter                  && terragrunt init && terragrunt apply
 cd ../arc                        && terragrunt init && terragrunt apply
 
+cd ../opa-gatekeeper              && terragrunt init && terragrunt apply
+
 # 3. Apply the kubectl-managed cluster-native resources (Karpenter
-#    NodePools/EC2NodeClass, and — after registering runners, see
-#    terraform/modules/arc/README.md — the ARC runner scale set)
+#    NodePools/EC2NodeClass, the OPA/Gatekeeper policy content, and —
+#    after registering runners, see terraform/modules/arc/README.md — the
+#    ARC runner scale set)
 aws eks update-kubeconfig --name hybrid-fleet-eks --region us-east-1
 kubectl apply -f kubernetes/eks/karpenter/
+kubectl apply -f kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/
 
-# 4. Deploy the VM tier, then bootstrap kubeadm on it over SSM (no SSH) —
-#    see ansible/README.md for the full Ansible wiring steps
+# 4. Deploy the VM tier, then bootstrap kubeadm + Gatekeeper on it over
+#    SSM (no SSH) — see ansible/README.md for the full Ansible wiring steps
 cd ../../onprem-vpc && terragrunt init && terragrunt apply
 cd ../vm-k8s         && terragrunt init && terragrunt apply
+# (ansible-playbook playbooks/bootstrap-k8s.yml && playbooks/configure-policy.yml,
+#  then kubectl apply -f kubernetes/base/opa-gatekeeper/ -f policy/gatekeeper-constraints/
+#  against the VM-tier kubeconfig too, to actually complete policy parity)
 
 # 5. Hybrid networking: DNS, ALB Ingress, and the Site-to-Site VPN linking
 #    the two VPCs (then configure strongSwan — see ansible/README.md)
