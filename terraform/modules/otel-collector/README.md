@@ -12,7 +12,7 @@ Both this module and the Ansible role render the *same* file — [`kubernetes/ba
 
 ```hcl
 module "otel_collector" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/otel-collector?ref=modules/otel-collector/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/otel-collector?ref=modules/otel-collector/v1.0.1"
 
   cluster_name          = module.eks.cluster_name
   oidc_provider_arn     = module.eks.oidc_provider_arn

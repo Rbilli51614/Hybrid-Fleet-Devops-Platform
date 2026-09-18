@@ -38,9 +38,15 @@ variable "github_app_secret_name" {
 }
 
 variable "runner_irsa_policy_json" {
-  description = "Inline IAM policy (JSON) granting the runner pods' service account AWS access for CI jobs (e.g. ECR push, S3 artifact access). Left minimal by default; scope per team before granting anything broader. Set to null to skip creating the runner IRSA role entirely."
+  description = "Inline IAM policy (JSON) granting the runner pods' service account AWS access for CI jobs (e.g. ECR push, S3 artifact access). Left minimal by default; scope per team before granting anything broader."
   type        = string
   default     = null
+}
+
+variable "attach_runner_irsa_policy" {
+  description = "Whether to create the runner IRSA role from runner_irsa_policy_json. Kept separate from checking runner_irsa_policy_json != null — see terraform/modules/iam-irsa/README.md's \"Why attach_inline_policy is a separate variable\": if this were ever set to a policy document referencing a sibling resource created in the same apply, count couldn't be derived from that value's nullness at plan time."
+  type        = bool
+  default     = false
 }
 
 variable "runner_service_account_name" {

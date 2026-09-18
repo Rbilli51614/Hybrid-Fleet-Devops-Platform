@@ -4,7 +4,7 @@ Installs the GitHub Actions Runner Controller (`gha-runner-scale-set-controller`
 
 Versioned via git tags (`modules/arc/vX.Y.Z`) — see [module registry convention](../../../docs/architecture.md#module-registry-convention).
 
-Depends on outputs from [`eks-cluster`](../eks-cluster/) and calls [`iam-irsa`](../iam-irsa/) internally when `runner_irsa_policy_json` is set.
+Depends on outputs from [`eks-cluster`](../eks-cluster/) and calls [`iam-irsa`](../iam-irsa/) internally when `attach_runner_irsa_policy` is `true` — see [`iam-irsa`](../iam-irsa/)'s README for why that's a separate flag from `runner_irsa_policy_json` itself.
 
 ## Registering runners (one-time, manual — GitHub App credentials are secrets)
 
@@ -35,8 +35,10 @@ module "arc" {
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_provider_url = module.eks.oidc_provider_url
 
-  # Optional: let runner pods push to ECR without static credentials.
-  runner_irsa_policy_json = data.aws_iam_policy_document.runner_ecr_push.json
+  # Optional: let runner pods push to ECR without static credentials. Note
+  # attach_runner_irsa_policy is required alongside this — see below.
+  attach_runner_irsa_policy = true
+  runner_irsa_policy_json   = data.aws_iam_policy_document.runner_ecr_push.json
 }
 ```
 
@@ -48,7 +50,8 @@ module "arc" {
 | `runners_namespace` | Namespace for runner scale sets/pods | `string` | `"arc-runners"` |
 | `controller_helm_version` | Controller Helm chart version | `string` | `"0.9.3"` |
 | `github_app_secret_name` | Secrets Manager secret name | `string` | `"<cluster_name>-arc-github-app"` |
-| `runner_irsa_policy_json` | Inline policy for runner pods' AWS access; `null` skips the role | `string` | `null` |
+| `attach_runner_irsa_policy` | Whether to create the runner IRSA role at all | `bool` | `false` |
+| `runner_irsa_policy_json` | Inline policy for runner pods' AWS access, used only when `attach_runner_irsa_policy` is `true` | `string` | `null` |
 | `runner_service_account_name` | Service account the IRSA role trusts | `string` | `"arc-runner"` |
 | `tags` | Extra tags on IAM/Secrets Manager resources | `map(string)` | `{}` |
 

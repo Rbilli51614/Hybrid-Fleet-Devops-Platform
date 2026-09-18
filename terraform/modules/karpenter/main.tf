@@ -218,6 +218,7 @@ module "controller_irsa" {
   oidc_provider_url    = var.oidc_provider_url
   namespace            = var.karpenter_namespace
   service_account_name = "karpenter"
+  attach_inline_policy = true
   inline_policy_json   = data.aws_iam_policy_document.controller.json
   tags                 = var.tags
 }

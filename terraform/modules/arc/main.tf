@@ -39,12 +39,13 @@ resource "aws_secretsmanager_secret_version" "github_app_placeholder" {
 # Optional: grants the runner pods' own service account AWS permissions for
 # what CI jobs actually need to do (push to ECR, read a build-artifact
 # bucket, etc.) via IRSA instead of long-lived keys baked into the runner
-# image or job env. Scope runner_irsa_policy_json per team; leave it null
-# for runners that only need GitHub access.
+# image or job env. Scope runner_irsa_policy_json per team; leave
+# attach_runner_irsa_policy at its default (false) for runners that only
+# need GitHub access.
 # ---------------------------------------------------------------------------
 
 module "runner_irsa" {
-  count  = var.runner_irsa_policy_json != null ? 1 : 0
+  count  = var.attach_runner_irsa_policy ? 1 : 0
   source = "../iam-irsa"
 
   role_name            = "${var.cluster_name}-arc-runner"
@@ -52,6 +53,7 @@ module "runner_irsa" {
   oidc_provider_url    = var.oidc_provider_url
   namespace            = var.runners_namespace
   service_account_name = var.runner_service_account_name
+  attach_inline_policy = true
   inline_policy_json   = var.runner_irsa_policy_json
   tags                 = var.tags
 }

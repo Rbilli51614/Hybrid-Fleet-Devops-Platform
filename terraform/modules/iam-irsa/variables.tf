@@ -30,9 +30,15 @@ variable "policy_arns" {
 }
 
 variable "inline_policy_json" {
-  description = "Optional inline IAM policy document (JSON) to attach to the role, for permissions not available as a managed policy."
+  description = "Optional inline IAM policy document (JSON) to attach to the role, for permissions not available as a managed policy. May be a value only known after apply (e.g. a policy document referencing a sibling resource's ARN created in the same apply) — see attach_inline_policy for why whether to create the resource is a separate variable from this one."
   type        = string
   default     = null
+}
+
+variable "attach_inline_policy" {
+  description = "Whether to create the inline policy from inline_policy_json. Deliberately separate from checking inline_policy_json != null: when that value is computed from a policy document that references another resource created in the same apply (e.g. aws_iam_role.node.arn), the *entire* computed JSON string — including its nullness — is unknown at plan time, and count can't be derived from an unknown value (\"Invalid count argument ... cannot be determined until apply\"). This flag is always a literal true/false at the call site, so it's always known."
+  type        = bool
+  default     = false
 }
 
 variable "tags" {

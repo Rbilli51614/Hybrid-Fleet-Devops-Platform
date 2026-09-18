@@ -7,7 +7,7 @@ include "eks_controller" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/arc?ref=modules/arc/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/arc?ref=modules/arc/v1.0.1"
 }
 
 inputs = {

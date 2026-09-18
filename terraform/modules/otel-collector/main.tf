@@ -13,6 +13,7 @@ module "controller_irsa" {
   oidc_provider_url    = var.oidc_provider_url
   namespace            = var.namespace
   service_account_name = "otel-collector"
+  attach_inline_policy = true
   inline_policy_json   = data.aws_iam_policy_document.remote_write.json
   tags                 = var.tags
 }
