@@ -45,10 +45,12 @@ locals {
   # var.pagerduty_integration_key directly here crashes plan/apply outright
   # ("Cannot include a null value in a string template") whenever it's
   # null — which is the default, and this module's normal unconfigured
-  # state. coalesce(..., "") keeps this branch evaluable even when it's
-  # the one that ends up discarded; it's never actually used unless the
-  # key is set, at which point it's never empty either.
-  pagerduty_integration_key_safe = coalesce(var.pagerduty_integration_key, "")
+  # state. A plain ternary (not coalesce(): that function treats an empty
+  # string as "no value" too and errors when nothing non-empty is found,
+  # which "unset" as the fallback here would otherwise hit) keeps this
+  # branch evaluable even when it's the one that ends up discarded; it's
+  # never actually used unless the key is set.
+  pagerduty_integration_key_safe = var.pagerduty_integration_key != null ? var.pagerduty_integration_key : "unset"
 
   alertmanager_config_with_pagerduty = <<-EOT
     route:

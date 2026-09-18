@@ -15,7 +15,9 @@ Both converge on the same destination; neither goes through the other. Worth kno
 
 ## The `pagerduty_integration_key = null` default used to crash `plan`/`apply` outright
 
-Not a hypothetical — this is exactly what happened applying this stack for real with no key configured (this module's normal, out-of-the-box state, and its documented default). `locals.alertmanager_config_with_pagerduty` interpolated `var.pagerduty_integration_key` directly into a heredoc; Terraform evaluates *every* local in a `locals` block regardless of whether the ternary that picks between `alertmanager_config_with_pagerduty` and `alertmanager_config_default` (below) actually selects it, so `"${null}"` — invalid HCL, "Cannot include a null value in a string template" — blew up the whole plan even though that branch was never going to be used. Fixed by routing the interpolation through `coalesce(var.pagerduty_integration_key, "")` first, so the discarded branch is always evaluable even when it's empty. `terraform validate` never caught this (it doesn't fully evaluate variable defaults into locals the way a real plan does); only an actual plan against this module's own documented default surfaced it.
+Not a hypothetical — this is exactly what happened applying this stack for real with no key configured (this module's normal, out-of-the-box state, and its documented default). `locals.alertmanager_config_with_pagerduty` interpolated `var.pagerduty_integration_key` directly into a heredoc; Terraform evaluates *every* local in a `locals` block regardless of whether the ternary that picks between `alertmanager_config_with_pagerduty` and `alertmanager_config_default` (below) actually selects it, so `"${null}"` — invalid HCL, "Cannot include a null value in a string template" — blew up the whole plan even though that branch was never going to be used. `terraform validate` never caught this across every earlier validation pass (it doesn't fully evaluate variable defaults into locals the way a real plan does); only an actual plan against this module's own documented default surfaced it.
+
+The first fix attempt — `coalesce(var.pagerduty_integration_key, "")` — was itself wrong and failed on the very next real plan: `coalesce()` treats an empty string as "no value" too, so `coalesce(null, "")` errors with "no non-null, non-empty-string arguments" since neither argument counts. The actual fix is a plain ternary, `var.pagerduty_integration_key != null ? var.pagerduty_integration_key : "unset"`, which only cares about null-ness, not whether the fallback is itself "truthy" — verified against a standalone `terraform plan` with all other required variables supplied, not just re-trusted from reasoning, before it shipped.
 
 ## Grafana authentication
 
@@ -25,7 +27,7 @@ Not a hypothetical — this is exactly what happened applying this stack for rea
 
 ```hcl
 module "observability" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.1"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.2"
 
   name = "hybrid-fleet"
 
