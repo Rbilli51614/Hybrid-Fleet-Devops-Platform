@@ -11,13 +11,13 @@
 # initialized/joined before doing anything.
 
 - name: Common Kubernetes node prerequisites
-  hosts: control-plane:worker
+  hosts: control_plane:worker
   become: true
   roles:
     - k8s-common
 
 - name: Initialize the control plane
-  hosts: control-plane
+  hosts: control_plane
   become: true
   roles:
     - k8s-control-plane

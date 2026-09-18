@@ -9,7 +9,7 @@
 # or to pick up an updated tunnel_parameter_path).
 
 - name: Configure the on-prem VPN gateway
-  hosts: vpn-gateway
+  hosts: vpn_gateway
   become: true
   roles:
     - vpn-gateway

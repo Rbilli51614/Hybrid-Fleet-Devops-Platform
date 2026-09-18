@@ -8,7 +8,7 @@
 #     -e "amp_remote_write_url=$(cd ../terraform/live/dev/observability && terragrunt output -raw amp_remote_write_url)"
 
 - name: Install federated observability (OpenTelemetry Collector)
-  hosts: control-plane
+  hosts: control_plane
   become: true
   roles:
     - otel-collector

@@ -17,7 +17,7 @@
 # policy/gatekeeper-constraints/. See those directories' READMEs.
 
 - name: Install policy parity (Gatekeeper controller)
-  hosts: control-plane
+  hosts: control_plane
   become: true
   roles:
     - opa-gatekeeper
