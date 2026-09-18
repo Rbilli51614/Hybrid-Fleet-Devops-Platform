@@ -23,7 +23,7 @@ dependency "nexus" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.2"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.3"
 }
 
 inputs = {

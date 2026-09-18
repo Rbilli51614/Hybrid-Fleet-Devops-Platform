@@ -19,6 +19,10 @@ Not a hypothetical — this is exactly what happened applying this stack for rea
 
 The first fix attempt — `coalesce(var.pagerduty_integration_key, "")` — was itself wrong and failed on the very next real plan: `coalesce()` treats an empty string as "no value" too, so `coalesce(null, "")` errors with "no non-null, non-empty-string arguments" since neither argument counts. The actual fix is a plain ternary, `var.pagerduty_integration_key != null ? var.pagerduty_integration_key : "unset"`, which only cares about null-ness, not whether the fallback is itself "truthy" — verified against a standalone `terraform plan` with all other required variables supplied, not just re-trusted from reasoning, before it shipped.
 
+## `aws_prometheus_alert_manager_definition`'s `definition` isn't the Alertmanager YAML itself
+
+It's a YAML document with exactly one key, `alertmanager_config`, whose *string value* (a block literal, `alertmanager_config: |`) is the actual Alertmanager config. Passing the Alertmanager YAML directly at the top level — which is what AWS's own troubleshooting docs' generic example, a real published community Terraform module's default, *and* AWS's own `CreateAlertManagerDefinition` API reference's field description ("a base64-encoded YAML file") all read as correct — gets rejected outright: `ValidationException: Empty Alertmanager definition`, for every variant tried, including ones with a real `sns_configs`/`webhook_configs` receiver integration. Confirmed directly against the real AMP API (`aws amp create-alert-manager-definition`, bypassing Terraform entirely) before trusting any fix: the unwrapped config reliably reproduces "Empty" every time, and only AWS's own `yaml-AlertManagerDefinitionData` API reference page — not the troubleshooting guide, not the CLI help text, not any third-party module — actually shows the `alertmanager_config: |` wrapper in its example. Both locals above produce the wrapped form.
+
 ## Grafana authentication
 
 `aws_grafana_workspace` here uses `AWS_SSO` (IAM Identity Center) authentication — the AWS-recommended default, and the only provider that doesn't need a separate SAML IdP. **IAM Identity Center must already be enabled in the account** (an account-level, not Terraform-managed, prerequisite) before this workspace is reachable. Pass `grafana_admin_sso_user_ids` (Identity Center user IDs, not IAM ARNs — find them via `aws identitystore list-users`) to actually grant someone in; an AWS_SSO-authenticated workspace with zero role associations has no way in for anyone.
@@ -27,7 +31,7 @@ The first fix attempt — `coalesce(var.pagerduty_integration_key, "")` — was 
 
 ```hcl
 module "observability" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.2"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/observability?ref=modules/observability/v1.0.3"
 
   name = "hybrid-fleet"
 

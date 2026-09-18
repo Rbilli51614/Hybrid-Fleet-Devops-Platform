@@ -52,23 +52,35 @@ locals {
   # never actually used unless the key is set.
   pagerduty_integration_key_safe = var.pagerduty_integration_key != null ? var.pagerduty_integration_key : "unset"
 
+  # The top-level `alertmanager_config: |` wrapper below isn't optional
+  # styling — it's the actual wire format CreateAlertManagerDefinition
+  # expects (a YAML document with one key, alertmanager_config, whose
+  # *string value* is the real Alertmanager YAML), confirmed directly
+  # against the AWS API after the plain, unwrapped config (exactly what
+  # AWS's own troubleshooting docs and community Terraform modules show as
+  # "the" example) was rejected outright: "ValidationException: Empty
+  # Alertmanager definition" for every unwrapped variant tried, including
+  # ones with a real receiver integration — so this isn't about the inner
+  # content being incomplete, it's specifically the missing wrapper key.
   alertmanager_config_with_pagerduty = <<-EOT
-    route:
-      receiver: pagerduty
-    receivers:
-      - name: pagerduty
-        pagerduty_configs:
-          - service_key: ${local.pagerduty_integration_key_safe}
+    alertmanager_config: |
+      route:
+        receiver: pagerduty
+      receivers:
+        - name: pagerduty
+          pagerduty_configs:
+            - service_key: ${local.pagerduty_integration_key_safe}
   EOT
 
   # No PagerDuty integration key configured — alerts are evaluated and
   # visible in the AMP workspace/Grafana, but not paged anywhere yet. Set
   # var.pagerduty_integration_key to wire up real paging.
   alertmanager_config_default = <<-EOT
-    route:
-      receiver: default
-    receivers:
-      - name: default
+    alertmanager_config: |
+      route:
+        receiver: default
+      receivers:
+        - name: default
   EOT
 }
 
