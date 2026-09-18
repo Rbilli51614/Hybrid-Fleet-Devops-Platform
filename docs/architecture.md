@@ -84,3 +84,9 @@ source = "git::https://github.com/<org>/Hybrid-Fleet-Devops-Platform.git//terraf
 ```
 
 Tags follow `modules/<module-name>/vX.Y.Z`. This gives every consumer (both K8s tiers' IaC) the same version-pinning and breaking-change discipline a hosted private registry would, without a paid dependency. See [`decision-stack.md`](decision-stack.md) for the tradeoff discussion.
+
+## Why EKS and Karpenter are separate Terragrunt stacks
+
+`terraform/live/dev/eks` and `terraform/live/dev/karpenter` are two Terragrunt units, not one, even though Karpenter only exists to serve the EKS cluster. Karpenter's Helm release needs a `helm` provider configured with that cluster's own endpoint/CA/auth token — and a provider block can't be configured from a resource created in the *same* `terraform apply` without the well-known "provider config depends on a resource" chicken-and-egg problem. Splitting them into two stacks, with `karpenter` reading `eks`'s outputs through a Terragrunt `dependency` block, avoids it entirely: `eks` applies and finishes, *then* `karpenter`'s generated `helm_provider.tf` points at a cluster that already exists.
+
+The same reasoning is why the EKS cluster ships with a small on-demand **core system node group** (see the `eks-cluster` module): the Karpenter controller has to run somewhere before it can provision any capacity of its own, so it's pinned there via `nodeSelector` rather than depending on Karpenter to bootstrap itself.

@@ -1,0 +1,35 @@
+# EC2NodeClass: the AWS-specific half of a Karpenter NodePool — AMI family,
+# IAM role, and which subnets/security groups nodes may land in.
+#
+# `role` must match the karpenter module's `node_iam_role_name` output
+# (naming convention: "<cluster_name>-karpenter-node"). Karpenter creates
+# and manages the matching instance profile itself.
+#
+# Subnets and the cluster security group are discovered by the
+# `karpenter.sh/discovery: <cluster_name>` tag set by, respectively, the
+# vpc module (terraform/modules/vpc) and the eks-cluster module
+# (terraform/modules/eks-cluster) — so this manifest needs no subnet/SG IDs.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2023
+  role: hybrid-fleet-eks-karpenter-node
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: hybrid-fleet-eks
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: hybrid-fleet-eks
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 2

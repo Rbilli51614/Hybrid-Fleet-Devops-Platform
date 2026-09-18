@@ -13,7 +13,7 @@ terraform/
   modules/          # Shared, versioned Terraform modules (the "private registry")
   live/              # Terragrunt live environments that consume the modules
     global/          # Account-level bootstrap (Terraform state backend)
-    dev/             # Per-environment stacks (cloud VPC, EKS, on-prem VPC, VM-tier K8s, Nexus, VPN, observability)
+    dev/             # Per-environment stacks (cloud VPC, EKS, Karpenter, on-prem VPC, VM-tier K8s, Nexus, VPN, observability)
 ansible/             # Config management for the VM tier: kubeadm/k3s bootstrap, Nexus setup
 kubernetes/
   base/              # Manifests applied identically to BOTH clusters (OPA/Gatekeeper, OTel Collector)
@@ -29,10 +29,10 @@ docs/                # Architecture, decision stack, pitfalls, runbooks, intervi
 This is being built in phases, each independently demonstrable:
 
 - [x] **Phase 0 — Repo scaffolding & Terraform foundation.** Directory structure, remote state backend (S3 + DynamoDB), shared VPC module, Terragrunt root config, CI skeleton.
-- [ ] **Phase 1 — Cloud-native tier.** EKS cluster + Karpenter NodePools, IRSA, ALB Ingress.
-- [ ] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, registered against a GitHub App, ephemeral autoscaled runner pods.
+- [x] **Phase 1 — Cloud-native tier.** EKS cluster + core system node group + IRSA (generic module), Karpenter controller (IAM, Spot-interruption SQS/EventBridge, Helm release) and its default NodePool/EC2NodeClass.
+- [ ] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, registered against a GitHub App, ephemeral autoscaled runner pods, plus a Spot-first CI-only Karpenter NodePool.
 - [ ] **Phase 3 — VM tier.** Persistent EC2 ASG, `kubeadm`/`k3s` bootstrap via Ansible, SSM-only access (no SSH).
-- [ ] **Phase 4 — Hybrid networking.** "On-prem" VPC + Site-to-Site VPN linking the two tiers, Route 53 private hosted zone.
+- [ ] **Phase 4 — Hybrid networking.** "On-prem" VPC + Site-to-Site VPN linking the two tiers, Route 53 private hosted zone, ALB Ingress Controller.
 - [ ] **Phase 5 — Shared module registry discipline.** Semantic-versioned module tags, Terragrunt `_envcommon` patterns, module consumption from both tiers.
 - [ ] **Phase 6 — Nexus Sonatype.** Dedicated EC2 instance (not containerized), EBS storage, S3 lifecycle-managed backup/restore runbook.
 - [ ] **Phase 7 — Policy parity.** OPA/Gatekeeper deployed identically on both clusters.
@@ -48,9 +48,15 @@ Prerequisites: an AWS account, Terraform >= 1.7, Terragrunt >= 0.58, `kubectl`, 
 cd terraform/live/global/state-backend
 terraform init && terraform apply
 
-# 2. Deploy an environment stack via Terragrunt
-cd terraform/live/dev/cloud-vpc
-terragrunt init && terragrunt plan
+# 2. Deploy the cloud tier, in order (each stack reads the previous one's
+#    outputs via a Terragrunt `dependency` block)
+cd terraform/live/dev/cloud-vpc  && terragrunt init && terragrunt apply
+cd ../eks                        && terragrunt init && terragrunt apply
+cd ../karpenter                  && terragrunt init && terragrunt apply
+
+# 3. Apply Karpenter's NodePool/EC2NodeClass (kubectl-managed, not Terraform)
+aws eks update-kubeconfig --name hybrid-fleet-eks --region us-east-1
+kubectl apply -f kubernetes/eks/karpenter/
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full system diagram and [`docs/runbooks/`](docs/runbooks/) for operational procedures.

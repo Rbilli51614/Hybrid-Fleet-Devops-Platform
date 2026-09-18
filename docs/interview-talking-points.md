@@ -5,6 +5,7 @@
 - **Why ARC runners are ephemeral rather than a static pool:** security (no persistent lateral-movement surface) and cost (no idle capacity) — a single decision that improves both.
 - **Why OpenTelemetry over a single vendor agent:** keeps the observability backend swappable, directly answering the "familiarity with Datadog/Grafana/OTel/ELK" ask as interchangeable rather than a single bet.
 - **Cost-allocation tagging per team:** an extension of a finance/accounting background — chargeback and auditability translate directly into platform engineering discipline.
+- **Why EKS and Karpenter are separate Terragrunt stacks, not one:** avoids the classic "Helm/Kubernetes provider configured from a resource created in the same apply" chicken-and-egg problem — see [`docs/architecture.md`](architecture.md#why-eks-and-karpenter-are-separate-terragrunt-stacks). A small detail that signals real hands-on Terraform experience rather than copy-pasted examples.
 
 ## Internal Reuse Notes
 
