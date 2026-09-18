@@ -17,7 +17,7 @@ dependency "observability" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/otel-collector?ref=modules/otel-collector/v1.0.1"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/otel-collector?ref=modules/otel-collector/v1.0.2"
 }
 
 inputs = {

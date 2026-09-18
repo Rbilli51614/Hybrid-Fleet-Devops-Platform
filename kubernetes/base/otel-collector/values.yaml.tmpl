@@ -13,6 +13,15 @@
 
 mode: deployment
 
+# The chart requires this explicitly as of the pinned 0.108.0 (no default
+# repository is baked in any more — a real apply failed outright with
+# "[ERROR] 'image.repository' must be set" without it). This has to be the
+# "contrib" image, not the chart's own default suggestion of the core
+# otel/opentelemetry-collector image: sigv4auth and prometheusremotewrite,
+# both used below, only ship in the contrib distribution.
+image:
+  repository: otel/opentelemetry-collector-contrib
+
 config:
   receivers:
     hostmetrics:
@@ -34,12 +43,17 @@ config:
         authenticator: sigv4auth
 
   extensions:
+    # Also newly mandatory as of 0.108.0 — a real apply's second failure
+    # ("chart requires that the health_check extension be included") once
+    # image.repository was fixed. Standard liveness/readiness endpoint for
+    # this chart, not something this pipeline otherwise needed.
+    health_check: {}
     sigv4auth:
       region: "${aws_region}"
       service: "aps"
 
   service:
-    extensions: [sigv4auth]
+    extensions: [health_check, sigv4auth]
     pipelines:
       metrics:
         receivers: [hostmetrics]
