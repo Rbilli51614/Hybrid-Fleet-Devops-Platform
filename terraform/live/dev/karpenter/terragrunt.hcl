@@ -7,7 +7,7 @@ include "eks_controller" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.3"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.4"
 }
 
 inputs = {

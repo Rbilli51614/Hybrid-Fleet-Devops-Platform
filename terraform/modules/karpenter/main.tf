@@ -193,6 +193,26 @@ data "aws_iam_policy_document" "controller" {
     }
   }
 
+  # The default NodePool allows both spot and on-demand (see
+  # kubernetes/eks/karpenter/nodepool-default.yaml); a real scale-out
+  # test that landed on Spot failed with AuthFailure.
+  # ServiceLinkedRoleCreationNotPermitted — this AWS account had never
+  # used EC2 Spot before, so EC2 tried to auto-create
+  # AWSServiceRoleForEC2Spot on Karpenter's behalf and the controller
+  # had no permission to do that. Matches AWS's own reference Karpenter
+  # controller policy, scoped to only that one service-linked role.
+  statement {
+    sid       = "AllowScopedSpotServiceLinkedRoleCreation"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values   = ["spot.amazonaws.com"]
+    }
+  }
+
   statement {
     sid = "AllowUnscopedReads"
     actions = [
