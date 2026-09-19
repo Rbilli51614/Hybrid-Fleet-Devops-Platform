@@ -15,6 +15,13 @@ metadata:
   name: default
 spec:
   amiFamily: AL2023
+  # amiSelectorTerms is required as of Karpenter v1 (amiFamily alone no
+  # longer auto-discovers an AMI) — a real `kubectl apply` against the
+  # v1.0.6 controller rejected this object outright with
+  # "spec.amiSelectorTerms: Required value" until this was added. See
+  # this directory's README for the full story.
+  amiSelectorTerms:
+    - alias: al2023@latest
   role: hybrid-fleet-eks-karpenter-node
   subnetSelectorTerms:
     - tags:

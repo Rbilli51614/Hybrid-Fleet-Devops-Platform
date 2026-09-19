@@ -16,3 +16,14 @@ kubectl apply -f ec2nodeclass-default.yaml -f nodepool-default.yaml -f nodepool-
 - `nodepool-ci-runners.yaml` — Spot-first, tainted `workload=ci-runner:NoSchedule` pool for ARC runner pods (see [`kubernetes/eks/arc/`](../arc/)), so CI scaling never starves app workload capacity — see [`docs/pitfalls.md`](../../../docs/pitfalls.md).
 
 **If you rename the cluster:** update `role` in `ec2nodeclass-default.yaml` to match the `karpenter` module's `node_iam_role_name` output (`<cluster_name>-karpenter-node`), and both `karpenter.sh/discovery` tag values to the new cluster name.
+
+## `amiFamily` alone stopped being enough in Karpenter v1
+
+A real `kubectl apply` against the controller actually running here (`v1.0.6`) rejected `ec2nodeclass-default.yaml` outright: `spec.amiSelectorTerms: Required value`. Karpenter's `v1beta1` API let `amiFamily: AL2023` alone auto-discover the latest matching AMI; as of the `v1` API, that auto-discovery moved to an explicit `amiSelectorTerms[].alias` (format `<family>@<version>`, or `@latest`) — `amiFamily` is now optional and, when an alias is set, may only restate that alias's own family. Fixed by adding:
+
+```yaml
+amiSelectorTerms:
+  - alias: al2023@latest
+```
+
+Verified for real: `kubectl get ec2nodeclass default -o jsonpath='{.status.conditions}'` showed `AMIsReady`, `InstanceProfileReady`, `SecurityGroupsReady`, `SubnetsReady`, and `Ready` all `True` after the fix.
