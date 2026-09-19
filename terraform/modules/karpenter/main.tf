@@ -33,6 +33,25 @@ resource "aws_iam_role" "node" {
   tags               = var.tags
 }
 
+# The cluster runs in pure `authentication_mode = "API"` (see eks-cluster's
+# access_config) — no aws-auth ConfigMap fallback. EKS auto-registers a
+# *managed* node group's role for API-server access, but Karpenter's nodes
+# are self-managed (kubeadm/EC2-launched, not an EKS-managed node group),
+# so nothing registers this role on its own. A real scale-out test's node
+# came up, joined the VPC, and ran kubelet — but kubelet's own
+# "Attempting to register node" call failed with a flat `Unauthorized`
+# from the API server, discovered via SSM Session Manager onto the
+# instance itself (systemctl status kubelet), since the node never
+# appeared in `kubectl get nodes` for anything to describe/log from the
+# Kubernetes side. `EC2_LINUX` access entries get standard node bootstrap
+# permissions automatically — no access-policy-association needed, unlike
+# the admin entries in eks-cluster.
+resource "aws_eks_access_entry" "node" {
+  cluster_name  = var.cluster_name
+  principal_arn = aws_iam_role.node.arn
+  type          = "EC2_LINUX"
+}
+
 resource "aws_iam_role_policy_attachment" "node_worker" {
   role       = aws_iam_role.node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
@@ -146,10 +165,34 @@ data "aws_iam_policy_document" "controller" {
     resources = ["*"]
   }
 
+  # Also a real gap: the controller's own launch-template garbage
+  # collector, cleaning up orphaned templates left behind by failed
+  # launch attempts (of which this real test produced several while the
+  # CreateTags fixes above were being worked out), failed the same way:
+  # UnauthorizedOperation on ec2:DeleteLaunchTemplate. Grouped with
+  # instance termination and resource-tag-scoped (rather than the
+  # unconditioned instance/*-only grant this started with), matching
+  # AWS's own reference Karpenter controller policy's AllowScopedDeletion
+  # statement.
   statement {
-    sid       = "AllowScopedInstanceTermination"
-    actions   = ["ec2:TerminateInstances"]
-    resources = ["arn:${local.partition}:ec2:${local.region}:${local.account_id}:instance/*"]
+    sid     = "AllowScopedDeletion"
+    actions = ["ec2:TerminateInstances", "ec2:DeleteLaunchTemplate"]
+    resources = [
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:instance/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:launch-template/*",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}"
+      values   = ["owned"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/karpenter.sh/nodepool"
+      values   = ["*"]
+    }
   }
 
   # A real launch attempt failed outright — UnauthorizedOperation on

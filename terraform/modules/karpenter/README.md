@@ -36,11 +36,27 @@ for EC2 Spot Instances.
 
 This AWS account had never used EC2 Spot before, so EC2 tried to auto-create `AWSServiceRoleForEC2Spot` on Karpenter's behalf, and the controller role had no `iam:CreateServiceLinkedRole` permission at all. Fixed (v1.0.4) with a statement scoped via `iam:AWSServiceName: spot.amazonaws.com` so it can only ever create that one service-linked role — matches AWS's own reference Karpenter controller policy.
 
+Fixing all three IAM gaps got a real instance all the way to `Launched=True` — but it still never showed up in `kubectl get nodes`. See the next two sections for what was actually going on (a cluster-access gap, not an IAM-policy-on-the-controller gap), found via SSM directly on the instance since nothing about it ever reached the Kubernetes side to log from.
+
+While fixing the tagging gaps, the controller's own launch-template garbage collector (cleaning up templates orphaned by the several failed launches above) hit the same class of problem: `UnauthorizedOperation` on `ec2:DeleteLaunchTemplate`. Folded into a resource-tag-scoped `AllowScopedDeletion` statement (v1.0.5) alongside `ec2:TerminateInstances`, matching AWS's reference policy, rather than the unconditioned `instance/*`-only termination grant this started with.
+
+## A launched, running, kubelet-running instance that never joins the cluster: `authentication_mode = "API"` doesn't auto-register self-managed nodes
+
+Even after all the IAM gaps above were fixed, the launched instance never appeared in `kubectl get nodes` — and Karpenter's own controller logs went quiet after logging `"launched nodeclaim"`, since as far as Karpenter's concerned the instance exists; it has no visibility into whether kubelet ever successfully registers. Found by going straight to the instance itself via SSM Session Manager (`aws ssm send-command` running `systemctl status kubelet`, since the [`vm-k8s-asg`](../vm-k8s-asg/) node role already has `AmazonSSMManagedInstanceCore` — no SSH needed here either):
+
+```
+kubelet[...]: "Attempting to register node" node="ip-10-0-0-181.ec2.internal"
+kubelet[...]: E... "Failed to ensure lease exists, will retry" err="Unauthorized"
+kubelet[...]: E... "Unable to register node with API server" err="Unauthorized" node="..."
+```
+
+Root cause: [`eks-cluster`](../eks-cluster/)'s cluster runs pure `authentication_mode = "API"` (no `aws-auth` ConfigMap fallback), and only grants access entries to `var.admin_principal_arns` — nothing registers a *node* IAM role at all. An EKS-*managed* node group (the core system nodes) gets that registration automatically as part of being a managed node group; Karpenter's nodes are self-managed (EC2 instances Karpenter launches directly), so nothing did it for them. Fixed (v1.0.5) by adding an `aws_eks_access_entry` of `type = "EC2_LINUX"` for the Karpenter node role — that type gets standard node-bootstrap permissions automatically, with no `aws_eks_access_policy_association` needed (unlike the admin entries, which need `AmazonEKSClusterAdminPolicy` explicitly associated).
+
 ## Example
 
 ```hcl
 module "karpenter" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.4"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.5"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint
