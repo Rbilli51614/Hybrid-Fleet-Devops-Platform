@@ -52,6 +52,8 @@ kubelet[...]: E... "Unable to register node with API server" err="Unauthorized" 
 
 Root cause: [`eks-cluster`](../eks-cluster/)'s cluster runs pure `authentication_mode = "API"` (no `aws-auth` ConfigMap fallback), and only grants access entries to `var.admin_principal_arns` — nothing registers a *node* IAM role at all. An EKS-*managed* node group (the core system nodes) gets that registration automatically as part of being a managed node group; Karpenter's nodes are self-managed (EC2 instances Karpenter launches directly), so nothing did it for them. Fixed (v1.0.5) by adding an `aws_eks_access_entry` of `type = "EC2_LINUX"` for the Karpenter node role — that type gets standard node-bootstrap permissions automatically, with no `aws_eks_access_policy_association` needed (unlike the admin entries, which need `AmazonEKSClusterAdminPolicy` explicitly associated).
 
+Verified for real, end to end, across all five fixes: an oversized test pod forced Karpenter to provision a Spot `r7a.medium`, its NodeClaim's `status.conditions` reached `Launched=True` / `Registered=True` / `Initialized=True` / `Ready=True`, the instance joined the cluster as a `Ready` node, and the pod scheduled onto it and ran (`1/1 Running`).
+
 ## Example
 
 ```hcl
