@@ -156,11 +156,18 @@ data "aws_iam_policy_document" "controller" {
   # ec2:CreateTags against arn:...:launch-template/* — before it ever
   # got as far as RunInstances. Karpenter tags every resource type it
   # creates while launching a node (the launch template itself, the
-  # instance, its root volume, its ENI, and — for Spot — the spot
-  # request), not just the instance, so CreateTags needs to be granted
-  # on all five, not folded into AllowScopedInstanceTermination above.
-  # Scoped down to Karpenter's own creation calls via the conditions
-  # below, matching AWS's own reference Karpenter controller policy.
+  # EC2 Fleet request that actually places the instance, the instance,
+  # its root volume, its ENI, and — for Spot — the spot request), not
+  # just the instance, so CreateTags needs to be granted on all six,
+  # not folded into AllowScopedInstanceTermination above. Scoped down
+  # to Karpenter's own creation calls via the conditions below,
+  # matching AWS's own reference Karpenter controller policy.
+  #
+  # Found one resource type at a time: the first real apply failed on
+  # launch-template/*; fixing that surfaced the next failure one level
+  # deeper, on fleet/* (Karpenter's CreateFleet call, which places the
+  # actual RunInstances/CreateFleet request), once the launch template
+  # creation itself got past the first gap.
   statement {
     sid     = "AllowScopedResourceCreationTagging"
     actions = ["ec2:CreateTags"]
@@ -170,6 +177,7 @@ data "aws_iam_policy_document" "controller" {
       "arn:${local.partition}:ec2:${local.region}:${local.account_id}:network-interface/*",
       "arn:${local.partition}:ec2:${local.region}:${local.account_id}:launch-template/*",
       "arn:${local.partition}:ec2:${local.region}:${local.account_id}:spot-instances-request/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:fleet/*",
     ]
 
     condition {

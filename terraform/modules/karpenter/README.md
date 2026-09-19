@@ -22,13 +22,13 @@ allows the ec2:CreateTags action
 
 The original policy granted `ec2:CreateTags` only on `instance/*`, folded into the same statement as `ec2:TerminateInstances`. But launching a node means Karpenter creates and tags *several* resource types along the way — the launch template itself, the instance, its root volume, its ENI, and (for Spot) the spot instance request — not just the instance. Fixed with a dedicated `AllowScopedResourceCreationTagging` statement covering all five resource types, scoped down via `aws:RequestTag/kubernetes.io/cluster/<name>: owned` and `ec2:CreateAction` conditions to Karpenter's own creation calls (`RunInstances`/`CreateFleet`/`CreateLaunchTemplate`), matching AWS's own reference Karpenter controller policy rather than the ad-hoc `instance/*`-only grant this started with.
 
-Verified for real: after the fix, a NodeClaim's `status.conditions` went to `Launched=True` / `Registered=True` / `Initialized=True` / `Ready=True`, a real EC2 instance joined the cluster, and the oversized test pod scheduled onto it.
+This was actually discovered as two separate gaps, one layer apart: fixing `launch-template/*` (v1.0.2) let the launch template get created, which then surfaced the *next* missing resource type — `UnauthorizedOperation` on `ec2:CreateTags` against `arn:...:fleet/*`, since Karpenter places instances via `CreateFleet`, not a bare `RunInstances` call. `fleet/*` was added to the same statement (v1.0.3), verified for real the same way: a NodeClaim's `status.conditions` reaching `Launched=True` / `Registered=True` / `Initialized=True` / `Ready=True`, a real EC2 instance joining the cluster, and the oversized test pod scheduling onto it.
 
 ## Example
 
 ```hcl
 module "karpenter" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.2"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.3"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint
