@@ -147,12 +147,42 @@ data "aws_iam_policy_document" "controller" {
   }
 
   statement {
-    sid = "AllowScopedInstanceTermination"
-    actions = [
-      "ec2:TerminateInstances",
-      "ec2:CreateTags",
-    ]
+    sid       = "AllowScopedInstanceTermination"
+    actions   = ["ec2:TerminateInstances"]
     resources = ["arn:${local.partition}:ec2:${local.region}:${local.account_id}:instance/*"]
+  }
+
+  # A real launch attempt failed outright — UnauthorizedOperation on
+  # ec2:CreateTags against arn:...:launch-template/* — before it ever
+  # got as far as RunInstances. Karpenter tags every resource type it
+  # creates while launching a node (the launch template itself, the
+  # instance, its root volume, its ENI, and — for Spot — the spot
+  # request), not just the instance, so CreateTags needs to be granted
+  # on all five, not folded into AllowScopedInstanceTermination above.
+  # Scoped down to Karpenter's own creation calls via the conditions
+  # below, matching AWS's own reference Karpenter controller policy.
+  statement {
+    sid     = "AllowScopedResourceCreationTagging"
+    actions = ["ec2:CreateTags"]
+    resources = [
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:instance/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:volume/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:network-interface/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:launch-template/*",
+      "arn:${local.partition}:ec2:${local.region}:${local.account_id}:spot-instances-request/*",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes.io/cluster/${var.cluster_name}"
+      values   = ["owned"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "ec2:CreateAction"
+      values   = ["RunInstances", "CreateFleet", "CreateLaunchTemplate"]
+    }
   }
 
   statement {

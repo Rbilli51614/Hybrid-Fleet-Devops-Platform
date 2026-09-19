@@ -10,11 +10,25 @@ Depends on outputs from [`eks-cluster`](../eks-cluster/) (`oidc_provider_arn`, `
 
 Karpenter can't provision the node it needs to run on before it's running — see `core_node_selector` and the `eks-cluster` module's core system node group.
 
+## `ec2:CreateTags` scoped to `instance/*` alone isn't enough to launch a node
+
+A real scale-out test — an oversized pod forcing Karpenter to provision new capacity — failed at the very first step, before `RunInstances` was ever called:
+
+```
+UnauthorizedOperation: ... not authorized to perform: ec2:CreateTags on
+resource: arn:...:launch-template/* because no identity-based policy
+allows the ec2:CreateTags action
+```
+
+The original policy granted `ec2:CreateTags` only on `instance/*`, folded into the same statement as `ec2:TerminateInstances`. But launching a node means Karpenter creates and tags *several* resource types along the way — the launch template itself, the instance, its root volume, its ENI, and (for Spot) the spot instance request — not just the instance. Fixed with a dedicated `AllowScopedResourceCreationTagging` statement covering all five resource types, scoped down via `aws:RequestTag/kubernetes.io/cluster/<name>: owned` and `ec2:CreateAction` conditions to Karpenter's own creation calls (`RunInstances`/`CreateFleet`/`CreateLaunchTemplate`), matching AWS's own reference Karpenter controller policy rather than the ad-hoc `instance/*`-only grant this started with.
+
+Verified for real: after the fix, a NodeClaim's `status.conditions` went to `Launched=True` / `Registered=True` / `Initialized=True` / `Ready=True`, a real EC2 instance joined the cluster, and the oversized test pod scheduled onto it.
+
 ## Example
 
 ```hcl
 module "karpenter" {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.1"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/karpenter?ref=modules/karpenter/v1.0.2"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint
