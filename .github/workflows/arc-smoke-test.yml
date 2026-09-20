@@ -1,0 +1,36 @@
+name: ARC Smoke Test
+
+# Manual only — this exists to prove the self-hosted runner scale set
+# (kubernetes/eks/arc/) actually picks up and runs a real job, not to run on
+# every push. `runs-on` must match the Helm release name from
+# `helm install <release> oci://.../gha-runner-scale-set`, which is what
+# GitHub registers as the runner scale set's own label.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-it-runs-on-a-real-ephemeral-pod:
+    runs-on: hybrid-fleet-runners
+    steps:
+      - name: Who am I, and where
+        run: |
+          echo "hostname: $(hostname)"
+          echo "whoami:   $(whoami)"
+          echo "pwd:      $(pwd)"
+          echo "kernel:   $(uname -a)"
+
+      - name: Prove this pod dies after the job (ephemeral, not a persistent pool)
+        run: |
+          echo "RUNNER_NAME=$RUNNER_NAME"
+          echo "RUNNER_TRACKING_ID=$RUNNER_TRACKING_ID"
+          echo "This pod's identity above only ever appears in this one run's logs."
+
+      - uses: actions/checkout@v4
+
+      - name: Confirm checkout worked
+        run: |
+          echo "Checked out $(git rev-parse HEAD)"
+          ls -la
