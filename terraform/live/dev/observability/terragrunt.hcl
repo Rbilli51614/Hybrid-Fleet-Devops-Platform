@@ -39,7 +39,7 @@ inputs = {
   # and "Grafana authentication").
   pagerduty_integration_key    = null
   alarm_sns_subscription_email = null
-  grafana_admin_sso_user_ids   = []
+  grafana_admin_sso_user_ids   = ["f4784488-60a1-7033-dc0a-5409b3fad468"] # rbilli2
 
   tags = {
     Tier       = "shared"
