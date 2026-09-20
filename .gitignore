@@ -28,6 +28,11 @@ inventories/*/group_vars/*secret*
 *.key
 !ansible/**/*.key.example
 
+# Per-team ARC runner scale set values (kubernetes/eks/arc/README.md:
+# copied from the .example.yaml per team/repo, not checked in here)
+kubernetes/eks/arc/values-runner-scale-set.*.yaml
+!kubernetes/eks/arc/values-runner-scale-set.example.yaml
+
 # OS / editor
 .DS_Store
 .idea/

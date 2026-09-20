@@ -13,6 +13,26 @@ githubConfigSecret: arc-github-app # created per terraform/modules/arc/README.md
 minRunners: 0
 maxRunners: 10
 
+# The cluster's require-container-limits Gatekeeper constraint
+# (policy/gatekeeper-constraints/) applies to every real Pod, no
+# exemption for controller-managed ones — the listener pod this chart
+# creates for the scale set is no exception. A real `helm install`
+# without this was rejected outright by the admission webhook:
+# "[require-container-limits] Container <listener> has no CPU/memory
+# limit set". The container must be named exactly `listener` for the
+# chart to apply this instead of treating it as an unrelated sidecar.
+listenerTemplate:
+  spec:
+    containers:
+      - name: listener
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+
 template:
   spec:
     # Pins runner pods to the Karpenter CI-only NodePool (Spot-first,
@@ -34,3 +54,13 @@ template:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
         command: ["/home/runner/run.sh"]
+        # Same require-container-limits constraint applies to the actual
+        # ephemeral runner pod spawned per job, not just the listener —
+        # size these for the jobs this scale set actually runs.
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
