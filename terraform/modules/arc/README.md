@@ -16,14 +16,24 @@ Depends on outputs from [`eks-cluster`](../eks-cluster/) and calls [`iam-irsa`](
      --secret-string "$(jq -n --arg id "$APP_ID" --arg inst "$INSTALLATION_ID" --arg key "$(cat private-key.pem)" \
        '{github_app_id: $id, github_app_installation_id: $inst, github_app_private_key: $key}')"
    ```
-3. Sync it into the Kubernetes secret the scale set expects (no External Secrets Operator yet — see "Not yet built" below):
+3. Create the `arc-runners` namespace. Nothing else in this flow creates it: this module's own `helm_release` only sets `create_namespace = true` on the *controller's* namespace (`arc-systems`), `runner_irsa` (when enabled) only *references* `runners_namespace` for an IAM trust-policy condition rather than creating anything Kubernetes-side, and the scale set's own `helm install` in [`kubernetes/eks/arc/README.md`](../../../kubernetes/eks/arc/README.md) doesn't pass `--create-namespace` — by design, since it needs the secret below to already exist in that namespace by the time it runs.
+   ```bash
+   kubectl create namespace arc-runners
+   ```
+4. Sync the secret into the Kubernetes secret the scale set expects (no External Secrets Operator yet — see "Not yet built" below). Build it as a manifest piped straight into `kubectl apply -f -`, not `--from-literal` flags via `xargs`: the private key is multi-line PEM, `xargs` splits on *any* whitespace including embedded newlines, and a real run tore `-----END RSA PRIVATE KEY-----` out as its own word — which `kubectl` then read as a flag and rejected with `bad flag syntax: -----END`.
    ```bash
    aws secretsmanager get-secret-value --secret-id "$(terragrunt output -raw github_app_secret_name)" \
      --query SecretString --output text | \
-   jq -r 'to_entries[] | "--from-literal=\(.key)=\(.value)"' | \
-   xargs kubectl create secret generic arc-github-app -n arc-runners
+   jq '{
+     apiVersion: "v1",
+     kind: "Secret",
+     metadata: { name: "arc-github-app", namespace: "arc-runners" },
+     type: "Opaque",
+     stringData: .
+   }' | \
+   kubectl apply -f -
    ```
-4. Install the runner scale set — see [`kubernetes/eks/arc/README.md`](../../../kubernetes/eks/arc/README.md).
+5. Install the runner scale set — see [`kubernetes/eks/arc/README.md`](../../../kubernetes/eks/arc/README.md).
 
 ## Example
 
