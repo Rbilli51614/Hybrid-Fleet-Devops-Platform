@@ -106,14 +106,36 @@ resource "aws_route_table" "private" {
 
   vpc_id = aws_vpc.this.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
-  }
-
+  # No inline `route` block here on purpose — see aws_route.private_default
+  # below for why.
   tags = merge(var.tags, {
     Name = "${var.name}-private-rt-${count.index}"
   })
+}
+
+# A standalone resource, not an inline `route` block on aws_route_table.private
+# above, because a real `terragrunt plan` on onprem-vpc showed this table's
+# default route scheduled to be replaced *and* a second, completely unrelated
+# route destroyed alongside it: the onprem<->cloud route
+# terraform/modules/vpn adds via its own separate aws_route.onprem_to_cloud
+# resource (targeting this same route table by ID). An inline `route` block
+# treats its argument list as the *entire* authoritative route set for the
+# table, so any route added by another resource or module gets flagged for
+# removal on the owning table's own next apply — applying that plan would
+# have actually deleted the live VPN route. AWS's native VGW route
+# propagation (used on the cloud-vpc side, via aws_vpn_gateway_route_
+# propagation) is specially excluded from this diff and doesn't hit the
+# same problem, which is why only the onprem side ever surfaced it.
+# Converting to a standalone aws_route resource here, matching the pattern
+# the vpn module already uses correctly, removes the conflict entirely: each
+# route is independently managed by its own resource instead of one table
+# resource claiming ownership of routes it never created.
+resource "aws_route" "private_default" {
+  count = var.single_nat_gateway ? 1 : length(var.private_subnet_cidrs)
+
+  route_table_id         = aws_route_table.private[count.index].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
 }
 
 resource "aws_route_table_association" "private" {
