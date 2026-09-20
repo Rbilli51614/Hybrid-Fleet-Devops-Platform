@@ -1,0 +1,10 @@
+# actionlint config — https://github.com/rhysd/actionlint/blob/main/docs/config.md
+#
+# `hybrid-fleet-runners` is a real, verified label: it's the name of the ARC
+# gha-runner-scale-set Helm release (kubernetes/eks/arc/), not a GitHub-hosted
+# runner, so actionlint can't know about it from its built-in list. Confirmed
+# working for real: arc-smoke-test.yml's run 35542350874 completed
+# successfully on an ephemeral pod registered under this exact name.
+self-hosted-runner:
+  labels:
+    - hybrid-fleet-runners
