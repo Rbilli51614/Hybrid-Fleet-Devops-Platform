@@ -13,7 +13,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/cost-allocation-tags?ref=modules/cost-allocation-tags/v1.0.0"
+  source = "git::https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform.git//terraform/modules/cost-allocation-tags?ref=modules/cost-allocation-tags/v1.0.1"
 }
 
 inputs = {}
