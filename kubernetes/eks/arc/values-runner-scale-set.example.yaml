@@ -52,7 +52,14 @@ template:
 
     containers:
       - name: runner
-        image: ghcr.io/actions/actions-runner:latest
+        # Pinned, not :latest — the chart's own default image reference IS
+        # ghcr.io/actions/actions-runner:latest, and a real job assignment
+        # failed with "Failed to create the pod: ... [disallow-latest-tag]
+        # container <runner> uses image ... which ends with the disallowed
+        # tag <:latest>" from the same cluster-wide Gatekeeper policy as
+        # the resource-limits one above. Bump this periodically; check
+        # https://github.com/actions/runner/releases for the current one.
+        image: ghcr.io/actions/actions-runner:2.337.0
         command: ["/home/runner/run.sh"]
         # Same require-container-limits constraint applies to the actual
         # ephemeral runner pod spawned per job, not just the listener —
