@@ -4,9 +4,9 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes minor version for the control plane (e.g. \"1.31\"). AWS only keeps a rolling window of versions creatable/upgradable via the API (roughly the newest ~6 at any given time) — a version pinned here eventually ages out and both CreateNodegroup and new EKS addon versions start rejecting it (\"Requested AMI for this version ... is not supported\"), independent of anything in this module. There's no way to pin this permanently; revisit it periodically."
+  description = "Kubernetes minor version for the control plane (e.g. \"1.36\"). AWS only keeps a rolling window of versions creatable/upgradable via the API (roughly the newest ~6 at any given time) — a version pinned here eventually ages out and both CreateNodegroup and new EKS addon versions start rejecting it (\"Requested AMI for this version ... is not supported\"), independent of anything in this module. There's no way to pin this permanently; revisit it periodically."
   type        = string
-  default     = "1.31"
+  default     = "1.36"
 }
 
 variable "vpc_id" {

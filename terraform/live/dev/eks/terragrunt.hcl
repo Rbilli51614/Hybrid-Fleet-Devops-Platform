@@ -20,7 +20,7 @@ terraform {
 
 inputs = {
   cluster_name       = "hybrid-fleet-eks"
-  kubernetes_version = "1.31"
+  kubernetes_version = "1.36"
 
   vpc_id     = dependency.cloud_vpc.outputs.vpc_id
   subnet_ids = dependency.cloud_vpc.outputs.private_subnet_ids
