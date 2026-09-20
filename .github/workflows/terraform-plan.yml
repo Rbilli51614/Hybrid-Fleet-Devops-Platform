@@ -1,3 +1,12 @@
+# GitHub's own registration of this workflow went stale at some point after
+# it was first created — `gh api .../actions/workflows` kept reporting its
+# name as the literal file path instead of "Terraform Plan" below, and every
+# push to main (an event this workflow doesn't even trigger on) produced a
+# phantom `failure` run with zero jobs ("This run likely failed because of a
+# workflow file issue"). The file's actual content was never wrong; GitHub
+# just never re-parsed it. Confirmed by comparing against arc-smoke-test.yml,
+# registered correctly from day one with no such phantom runs. Any edit that
+# gets pushed forces GitHub to re-index it — this comment is that edit.
 name: Terraform Plan
 
 on:
