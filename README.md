@@ -31,7 +31,7 @@ This is being built in phases, each independently demonstrable:
 
 - [x] **Phase 0 — Repo scaffolding & Terraform foundation.** Directory structure, remote state backend (S3 + DynamoDB), shared VPC module, Terragrunt root config, CI skeleton.
 - [x] **Phase 1 — Cloud-native tier.** EKS cluster + core system node group + IRSA (generic module), Karpenter controller (IAM, Spot-interruption SQS/EventBridge, Helm release) and its default NodePool/EC2NodeClass.
-- [x] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, GitHub App credentials in Secrets Manager, optional runner-pod IRSA, ephemeral autoscaled runner pods on a Spot-first CI-only Karpenter NodePool. Controller is live; the runner scale set itself is blocked on registering a real GitHub App — see [Live Environment Status](#live-environment-status) below.
+- [x] **Phase 2 — Self-hosted CI.** GitHub Actions Runner Controller (ARC) on EKS, GitHub App credentials in Secrets Manager, optional runner-pod IRSA, ephemeral autoscaled runner pods on a Spot-first CI-only Karpenter NodePool. Fully proven end to end against a real GitHub App and a real repo — see [Live Environment Status](#live-environment-status) below.
 - [x] **Phase 3 — VM tier.** "On-prem" VPC, persistent EC2 ASGs (control-plane + worker node groups), SSM-only IAM (no SSH), kubeadm bootstrap + Calico CNI via Ansible over the SSM connection plugin.
 - [x] **Phase 4 — Hybrid networking.** Real Site-to-Site VPN (VGW + self-managed strongSwan customer gateway, configured via Ansible over SSM) linking the cloud and on-prem VPCs, a Route 53 private hosted zone associated with both, and the AWS Load Balancer Controller for ALB Ingress on EKS.
 - [x] **Phase 5 — Shared module registry discipline.** All 13 modules git-tagged `modules/<name>/v1.0.0`; every live stack (both tiers) consumes its module through that tag, not a local path — `cloud-vpc` and `onprem-vpc` both pull the identical `modules/vpc/v1.0.0`. The five EKS-controller stacks' duplicated `helm` provider boilerplate now lives once, in a Terragrunt `_envcommon` include.
@@ -44,15 +44,17 @@ This is being built in phases, each independently demonstrable:
 
 Every phase above is code-complete, but code-complete isn't the same claim as "runs." As of **2026-09-20**, the full fleet described above has actually been applied to a real AWS account and verified against real infrastructure — not just `terraform validate`/`plan` or mocked outputs — with every bug that only a real apply could surface found and fixed in place (see each affected module's own README for the specifics: `eks-cluster`, `iam-irsa`, `karpenter`, `arc`, `observability`, `otel-collector`, `vm-k8s-asg`).
 
-| Area | Status |
-|---|---|
-| Cloud tier (EKS, Karpenter, ALB Ingress, Gatekeeper) | Live. Karpenter scale-out verified end to end: a real oversized pod forced a Spot instance to launch, join, run the pod, and get consolidated away again afterward. |
-| VM tier (kubeadm, Calico, Gatekeeper, OTel Collector) | Live. All 3 nodes `Ready`; policy parity confirmed by a real admission-webhook rejection identical on both clusters. |
-| Hybrid networking (VPN, DNS, Nexus) | Live. Both IPsec tunnels `ESTABLISHED`; Nexus installed with its backup timer enabled. |
-| Observability (AMP, Grafana, OTel, CloudWatch alarms) | Live on both tiers, remote-writing to the same AMP workspace. |
-| Cost allocation tags | **Active** — `Project`/`Environment`/`Tier`/`CostCenter` confirmed via `aws ce list-cost-allocation-tags`, applied after the real ~24h AWS activation delay elapsed. |
-| ARC runner scale set | Controller running; **blocked on registering a real GitHub App** (manual, credential-bearing — see [`terraform/modules/arc/README.md`](terraform/modules/arc/README.md)). |
-| `cost-allocation-tags` Kubernetes-label bridge | Not started — an account-level Billing console toggle with no Terraform-managed resource yet, per that module's README. |
+Every "Live" claim below has a concrete, reproducible artifact behind it — not just "it applied cleanly":
+
+| Area | Status | Proof |
+|---|---|---|
+| Cloud tier (EKS, Karpenter, ALB Ingress, Gatekeeper) | Live | Karpenter scale-out verified end to end: a real oversized pod forced a Spot `r7a.medium` to launch, join, run the pod, and get consolidated away again afterward — `kubectl get nodeclaim -o jsonpath='{.status.conditions}'` showed `Launched=True`/`Registered=True`/`Initialized=True`/`Ready=True`. Gatekeeper confirmed live by a real admission-webhook rejection of a privileged, `:latest`-tagged, limit-less test pod. |
+| VM tier (kubeadm, Calico, Gatekeeper, OTel Collector) | Live | All 3 nodes `Ready` per `kubectl get nodes`; the identical admission-webhook rejection above reproduced on this cluster too, confirming real policy parity, not just identical YAML. |
+| Hybrid networking (VPN, DNS, Nexus) | Live | Both IPsec tunnels `ESTABLISHED` per `ipsec status` on the gateway instance (`10.1.0.0/16 === 10.0.0.0/16`); Nexus installed with its systemd backup timer enabled. |
+| Observability (AMP, Grafana, OTel, CloudWatch alarms) | Live | OTel Collector pods `1/1 Running` on both tiers, remote-writing to the same AMP workspace (confirmed via IMDS-authenticated `aps:RemoteWrite`, no static credentials). |
+| Cost allocation tags | **Active** | `aws ce list-cost-allocation-tags --status Active` returns all four (`Project`, `Environment`, `Tier`, `CostCenter`) as `Type: UserDefined`, applied only after the real ~24h AWS activation delay elapsed. |
+| ARC runner scale set | **Live** | Registered against a real GitHub App and a real repo, then proven with an actual job: [run 35542350874](https://github.com/Rbilli51614/Hybrid-Fleet-Devops-Platform/actions/runs/35542350874) completed `success` in 40s on ephemeral pod `hybrid-fleet-runners-ptllt-runner-jm7l9`, which registered with GitHub, ran `actions/checkout@v4` against this repo's real `main` (`2b065481...`), and tore itself down immediately after — see [`.github/workflows/arc-smoke-test.yml`](.github/workflows/arc-smoke-test.yml), safe to re-run anytime as a regression check. |
+| `cost-allocation-tags` Kubernetes-label bridge | Not started | An account-level Billing console toggle with no Terraform-managed resource yet, per that module's README. |
 
 ## Getting Started
 
