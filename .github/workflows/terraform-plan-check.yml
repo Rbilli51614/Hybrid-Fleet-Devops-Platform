@@ -1,16 +1,25 @@
-# Originally terraform-plan.yml. GitHub's registration of that path went
-# stale at some point after it was first created — `gh api
-# .../actions/workflows` kept reporting its name as the literal file path
-# instead of "Terraform Plan" below, and every push to main (an event this
-# workflow doesn't even trigger on) produced a phantom `failure` run with
-# zero jobs. The file's content was never wrong. Neither editing it in place
-# nor deleting-and-recreating it at the same path fixed the registration —
-# deleting it made it briefly disappear from `actions/workflows` entirely,
-# but re-adding the same path resurrected the exact same workflow ID and
-# original `created_at`, proving GitHub ties a workflow's identity to its
-# path, not its content, and retains that identity's stale metadata across
-# a delete/recreate cycle. Renaming to this path was the only thing that
-# actually got a fresh workflow ID with no stale history.
+# Originally terraform-plan.yml. Every push to main (an event this workflow
+# doesn't even trigger on) produced a phantom `failure` run with zero jobs,
+# survived across editing the file in place, deleting and recreating it at
+# the same path, and even renaming it to a brand-new workflow ID — none of
+# which should have mattered if the cause were registration staleness, which
+# is what the symptoms looked like at first. It wasn't. GitHub's actual error
+# (only visible in its own UI, not through the API or `gh run view`, which
+# both just say "workflow file issue"):
+#
+#   Invalid workflow file: .github/workflows/terraform-plan-check.yml#L1
+#   Unrecognized named-value: 'secrets'. Located at position 28 within
+#   expression: vars.AWS_ROLE_ARN != '' || secrets.AWS_ROLE_ARN != ''
+#
+# `secrets` was never a valid context inside a *job-level* `if:` —
+# `jobs.<job_id>.if` only has access to `github`, `needs`, `vars`, and
+# `inputs`, never `secrets`. GitHub validates the whole file up front, so one
+# invalid expression anywhere invalidates the entire workflow and produces a
+# zero-job failure for every event GitHub evaluates it against — including
+# events it doesn't even declare a trigger for, which is what made this look
+# like a registration problem rather than a syntax one. Fixed below by moving
+# the presence check into a step (where `secrets` is valid) and having the
+# `plan` job read that step's output through `needs` instead.
 name: Terraform Plan
 
 on:
@@ -49,12 +58,31 @@ jobs:
             terraform -chdir="$dir" validate
           done
 
+  check-aws-role:
+    name: Check whether AWS_ROLE_ARN is configured
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Check for a repo/environment variable or secret named AWS_ROLE_ARN
+        id: check
+        # `secrets` is valid here (a step, not a job-level `if:`) — and this
+        # only ever checks whether the value is non-empty, never echoes it,
+        # so the ARN (not sensitive on its own, but treated consistently
+        # either way) never appears in the log.
+        run: |
+          if [ -n "${{ vars.AWS_ROLE_ARN }}${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
   plan:
     name: terragrunt plan (dev)
     runs-on: ubuntu-latest
-    needs: fmt-and-validate
+    needs: [fmt-and-validate, check-aws-role]
     # Only runs once AWS_ROLE_ARN is configured as a repo/environment secret.
-    if: ${{ vars.AWS_ROLE_ARN != '' || secrets.AWS_ROLE_ARN != '' }}
+    if: needs.check-aws-role.outputs.configured == 'true'
     strategy:
       matrix:
         # Order matters for a first run against an empty account: each stack
