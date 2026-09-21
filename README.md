@@ -4,7 +4,7 @@ A single control plane that gives cloud-native (EKS) and self-managed VM-based K
 
 This repo simulates a real-world hybrid fleet: EKS + Karpenter for cloud-native workloads, and a self-managed `kubeadm` cluster on persistent EC2 Auto Scaling Groups standing in for on-prem VM-based Kubernetes (e.g. Nutanix NKP) — see [`docs/decision-stack.md`](docs/decision-stack.md) for why kubeadm over k3s or a managed alternative. Both tiers share Terraform modules, GitHub Actions self-hosted runners, OPA/Gatekeeper policy, and a federated observability plane.
 
-Full design rationale, the six-layer decision stack, and failure-mode pitfalls live in [`docs/`](docs/).
+Full design rationale, the six-layer decision stack, and failure-mode pitfalls live in [`docs/`](docs/). For a plain-language summary of what this project is and the real issues found and fixed along the way, see [`docs/executive-summary.md`](docs/executive-summary.md).
 
 ## Repo Layout
 
@@ -22,7 +22,7 @@ kubernetes/
   vm-tier/           # VM-cluster-only manifests
 policy/              # Gatekeeper constraint templates and constraints
 .github/workflows/   # CI/CD: Terraform plan/apply, reusable workflow components
-docs/                # Architecture, decision stack, pitfalls, runbooks, interview talking points
+docs/                # Architecture, decision stack, pitfalls, runbooks, interview talking points, executive summary
 ```
 
 ## Build Roadmap
